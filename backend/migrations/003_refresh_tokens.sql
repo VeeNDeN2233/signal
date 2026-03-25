@@ -1,0 +1,8 @@
+-- Таблица для хранения refresh-токенов
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token      VARCHAR(512) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
