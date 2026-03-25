@@ -2,6 +2,11 @@ import express from 'express';
 import * as dotenv from 'dotenv';
 import { checkConnection } from './db';
 import authRouter from './routes/auth';
+import usersRouter from './routes/admin/users';
+import employeesRouter from './routes/admin/employees';
+import * as referencesRouter from './routes/admin/references';
+import { authenticate, requireRole } from './middleware/auth';
+import raskhodRouter from './routes/raskhod';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -19,6 +24,17 @@ app.get('/health', (_req, res) => {
 
 // Маршруты аутентификации
 app.use('/api/auth', authRouter);
+
+// Административные маршруты (только admin)
+app.use('/api/users', authenticate, requireRole('admin'), usersRouter);
+app.use('/api/employees', authenticate, requireRole('admin'), employeesRouter);
+app.use('/api/positions', authenticate, requireRole('admin'), referencesRouter.positions);
+app.use('/api/ranks', authenticate, requireRole('admin'), referencesRouter.ranks);
+app.use('/api/units', authenticate, requireRole('admin'), referencesRouter.units);
+app.use('/api/user-statuses', authenticate, requireRole('admin'), referencesRouter.userStatuses);
+
+// Маршруты расхода личного состава (только commander)
+app.use('/api/raskhod', authenticate, requireRole('commander'), raskhodRouter);
 
 // Запуск сервера
 async function start(): Promise<void> {

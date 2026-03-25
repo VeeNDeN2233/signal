@@ -38,22 +38,22 @@
     - Тест: refresh с валидным токеном → новая пара
     - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 3. Checkpoint — убедиться, что аутентификация работает
+- [x] 3. Checkpoint — убедиться, что аутентификация работает
   - Все тесты проходят, ask the user if questions arise.
 
-- [ ] 4. Административные CRUD-эндпоинты (Backend)
-  - [ ] 4.1 Реализовать CRUD для `users`
+- [x] 4. Административные CRUD-эндпоинты (Backend)
+  - [x] 4.1 Реализовать CRUD для `users`
     - `GET/POST /api/users`, `GET/PUT/DELETE /api/users/:id`
     - HTTP 409 при дублировании `login`
     - Постраничный вывод (`page`, `page_size`)
     - _Requirements: 3.1, 3.2, 3.4_
 
-  - [ ] 4.2 Реализовать CRUD для `employees`
+  - [x] 4.2 Реализовать CRUD для `employees`
     - `GET/POST /api/employees`, `GET/PUT/DELETE /api/employees/:id`
     - Постраничный вывод
     - _Requirements: 3.1, 3.4_
 
-  - [ ] 4.3 Реализовать CRUD для справочников `positions`, `ranks`, `units`, `user_statuses`
+  - [x] 4.3 Реализовать CRUD для справочников `positions`, `ranks`, `units`, `user_statuses`
     - HTTP 409 при попытке удалить запись с активными ссылками
     - _Requirements: 3.1, 3.3, 3.4_
 
@@ -63,14 +63,14 @@
     - Тест: постраничный список → корректные `meta.page`, `meta.total`
     - _Requirements: 3.2, 3.3, 3.4_
 
-- [ ] 5. Расход личного состава (Backend)
-  - [ ] 5.1 Реализовать `POST /api/raskhod`
+- [-] 5. Расход личного состава (Backend)
+  - [-] 5.1 Реализовать `POST /api/raskhod`
     - Сохранение в `raskhod` + `raskhod_entries`
     - HTTP 409 при дублировании (дата + время + подразделение)
     - HTTP 201 при успехе
     - _Requirements: 4.5, 4.6_
 
-  - [ ] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id`
+  - [~] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id`
     - История расходов подразделения commander'а
     - Детали расхода с записями по сотрудникам
     - _Requirements: 4.7_
