@@ -80,6 +80,59 @@ router.post('/', requireRole('commander'), async (req: Request, res: Response): 
   }
 });
 
+// GET /api/alerts/:id/responses — список откликов сотрудников (только commander)
+router.get('/:id/responses', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
+  const alertId = parseInt(req.params.id, 10);
+  const commanderUnitId = req.user!.unit_id;
+
+  if (isNaN(alertId)) {
+    res.status(400).json({ error: 'Некорректный идентификатор тревоги' });
+    return;
+  }
+
+  try {
+    // Проверяем существование тревоги
+    const alertResult = await pool.query(
+      'SELECT id, unit_id FROM alerts WHERE id = $1 LIMIT 1',
+      [alertId]
+    );
+
+    if (alertResult.rowCount === 0) {
+      res.status(404).json({ error: 'Тревога не найдена' });
+      return;
+    }
+
+    const alert = alertResult.rows[0];
+
+    // Проверяем, что тревога принадлежит подразделению commander'а
+    if (alert.unit_id !== commanderUnitId) {
+      res.status(403).json({ error: 'Нет доступа к данной тревоге' });
+      return;
+    }
+
+    // Получаем всех сотрудников подразделения с информацией об отклике
+    const result = await pool.query(
+      `SELECT
+         e.id          AS employee_id,
+         e.last_name,
+         e.first_name,
+         e.middle_name,
+         ar.responded_at
+       FROM employees e
+       LEFT JOIN alert_responses ar
+         ON ar.employee_id = e.id AND ar.alert_id = $1
+       WHERE e.unit_id = $2
+       ORDER BY e.last_name, e.first_name`,
+      [alertId, alert.unit_id]
+    );
+
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error('Ошибка при получении откликов на тревогу:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // POST /api/alerts/:id/respond — подтвердить получение тревоги (только user)
 router.post('/:id/respond', requireRole('user'), async (req: Request, res: Response): Promise<void> => {
   const alertId = parseInt(req.params.id, 10);

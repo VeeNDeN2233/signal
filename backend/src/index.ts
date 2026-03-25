@@ -8,6 +8,7 @@ import * as referencesRouter from './routes/admin/references';
 import { authenticate, requireRole } from './middleware/auth';
 import raskhodRouter from './routes/raskhod';
 import alertsRouter from './routes/alerts';
+import employeesMeRouter from './routes/employees-me';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -25,6 +26,9 @@ app.get('/health', (_req, res) => {
 
 // Маршруты аутентификации
 app.use('/api/auth', authRouter);
+
+// Маршруты сотрудников (для user и commander) — должны быть до admin /api/employees
+app.use('/api/employees', authenticate, employeesMeRouter);
 
 // Административные маршруты (только admin)
 app.use('/api/users', authenticate, requireRole('admin'), usersRouter);
