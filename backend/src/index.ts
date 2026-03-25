@@ -37,8 +37,8 @@ app.use('/api/user-statuses', authenticate, requireRole('admin'), referencesRout
 // Маршруты расхода личного состава (только commander)
 app.use('/api/raskhod', authenticate, requireRole('commander'), raskhodRouter);
 
-// Маршруты тревоги (только commander)
-app.use('/api/alerts', authenticate, requireRole('commander'), alertsRouter);
+// Маршруты тревоги (роли проверяются на уровне каждого маршрута)
+app.use('/api/alerts', authenticate, alertsRouter);
 
 // Запуск сервера
 async function start(): Promise<void> {

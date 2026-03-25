@@ -1,6 +1,7 @@
-// Роуты тревоги (только commander)
+// Роуты тревоги
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import { requireRole } from '../middleware/auth';
 import * as admin from 'firebase-admin';
 
 const router = Router();
@@ -28,8 +29,8 @@ function getFirebaseApp(): admin.app.App {
   return admin.initializeApp({ credential });
 }
 
-// POST /api/alerts — объявить тревогу
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+// POST /api/alerts — объявить тревогу (только commander)
+router.post('/', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
   const created_by_user_id = req.user!.id;
   const unit_id = req.user!.unit_id;
 
@@ -76,6 +77,74 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   } finally {
     client.release();
+  }
+});
+
+// POST /api/alerts/:id/respond — подтвердить получение тревоги (только user)
+router.post('/:id/respond', requireRole('user'), async (req: Request, res: Response): Promise<void> => {
+  const alertId = parseInt(req.params.id, 10);
+  const userId = req.user!.id;
+
+  if (isNaN(alertId)) {
+    res.status(400).json({ error: 'Некорректный идентификатор тревоги' });
+    return;
+  }
+
+  try {
+    // Находим employee по user_id
+    const empResult = await pool.query(
+      'SELECT id FROM employees WHERE user_id = $1 LIMIT 1',
+      [userId]
+    );
+
+    if (empResult.rowCount === 0) {
+      res.status(404).json({ error: 'Сотрудник не найден для данного пользователя' });
+      return;
+    }
+
+    const employeeId = empResult.rows[0].id as number;
+
+    // Проверяем, что тревога существует
+    const alertResult = await pool.query(
+      'SELECT id FROM alerts WHERE id = $1 LIMIT 1',
+      [alertId]
+    );
+
+    if (alertResult.rowCount === 0) {
+      res.status(404).json({ error: 'Тревога не найдена' });
+      return;
+    }
+
+    // Создаём запись отклика
+    const responseResult = await pool.query(
+      `INSERT INTO alert_responses (alert_id, employee_id, responded_at)
+       VALUES ($1, $2, NOW())
+       RETURNING id, alert_id, employee_id, responded_at`,
+      [alertId, employeeId]
+    );
+
+    const record = responseResult.rows[0];
+    res.status(201).json({
+      data: {
+        id: record.id,
+        alert_id: record.alert_id,
+        employee_id: record.employee_id,
+        responded_at: record.responded_at,
+      },
+    });
+  } catch (err: unknown) {
+    // UNIQUE constraint violation (alert_id, employee_id)
+    if (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: string }).code === '23505'
+    ) {
+      res.status(409).json({ error: 'Вы уже подтвердили получение этой тревоги' });
+      return;
+    }
+    console.error('Ошибка при подтверждении тревоги:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
 

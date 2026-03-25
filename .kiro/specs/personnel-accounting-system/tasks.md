@@ -87,12 +87,12 @@
     - Логирование ошибок доставки без прерывания отправки остальным
     - _Requirements: 5.2, 5.3, 5.4_
 
-  - [-] 6.2 Реализовать `POST /api/alerts/:id/respond`
+  - [x] 6.2 Реализовать `POST /api/alerts/:id/respond`
     - Создание записи в `alert_responses`, HTTP 201
     - Доступ только для роли «user»
     - _Requirements: 6.4, 7.3_
 
-  - [~] 6.3 Реализовать `GET /api/alerts/:id/responses`
+  - [-] 6.3 Реализовать `GET /api/alerts/:id/responses`
     - Список откликов с `responded_at` для commander'а
     - _Requirements: 5.5, 5.6_
 
