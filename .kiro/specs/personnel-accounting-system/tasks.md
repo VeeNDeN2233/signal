@@ -63,14 +63,14 @@
     - Тест: постраничный список → корректные `meta.page`, `meta.total`
     - _Requirements: 3.2, 3.3, 3.4_
 
-- [-] 5. Расход личного состава (Backend)
-  - [-] 5.1 Реализовать `POST /api/raskhod`
+- [x] 5. Расход личного состава (Backend)
+  - [x] 5.1 Реализовать `POST /api/raskhod`
     - Сохранение в `raskhod` + `raskhod_entries`
     - HTTP 409 при дублировании (дата + время + подразделение)
     - HTTP 201 при успехе
     - _Requirements: 4.5, 4.6_
 
-  - [~] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id`
+  - [x] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id`
     - История расходов подразделения commander'а
     - Детали расхода с записями по сотрудникам
     - _Requirements: 4.7_
@@ -80,7 +80,7 @@
     - Тест: успешное создание → HTTP 201, записи в БД
     - _Requirements: 4.5, 4.6_
 
-- [ ] 6. Тревога (Backend + FCM)
+- [~] 6. Тревога (Backend + FCM)
   - [ ] 6.1 Реализовать `POST /api/alerts`
     - Создание записи в `alerts`, HTTP 201
     - Отправка FCM push-уведомлений всем сотрудникам подразделения (fcm_token) через FCM HTTP v1 API
