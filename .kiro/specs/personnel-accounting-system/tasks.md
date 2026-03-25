@@ -81,22 +81,22 @@
     - _Requirements: 4.5, 4.6_
 
 - [~] 6. Тревога (Backend + FCM)
-  - [ ] 6.1 Реализовать `POST /api/alerts`
+  - [x] 6.1 Реализовать `POST /api/alerts`
     - Создание записи в `alerts`, HTTP 201
     - Отправка FCM push-уведомлений всем сотрудникам подразделения (fcm_token) через FCM HTTP v1 API
     - Логирование ошибок доставки без прерывания отправки остальным
     - _Requirements: 5.2, 5.3, 5.4_
 
-  - [ ] 6.2 Реализовать `POST /api/alerts/:id/respond`
+  - [-] 6.2 Реализовать `POST /api/alerts/:id/respond`
     - Создание записи в `alert_responses`, HTTP 201
     - Доступ только для роли «user»
     - _Requirements: 6.4, 7.3_
 
-  - [ ] 6.3 Реализовать `GET /api/alerts/:id/responses`
+  - [~] 6.3 Реализовать `GET /api/alerts/:id/responses`
     - Список откликов с `responded_at` для commander'а
     - _Requirements: 5.5, 5.6_
 
-  - [ ] 6.4 Реализовать `PUT /api/employees/me/fcm-token`
+  - [~] 6.4 Реализовать `PUT /api/employees/me/fcm-token`
     - Обновление `fcm_token` в таблице `employees`
     - _Requirements: 6.6_
 
@@ -106,10 +106,10 @@
     - Тест: повторное подтверждение → HTTP 409 (UNIQUE constraint)
     - _Requirements: 5.2, 5.3, 6.4_
 
-- [ ] 7. Checkpoint — убедиться, что все backend-тесты проходят
+- [~] 7. Checkpoint — убедиться, что все backend-тесты проходят
   - Все тесты проходят, ask the user if questions arise.
 
-- [ ] 8. Web App — базовая структура и аутентификация (React)
+- [~] 8. Web App — базовая структура и аутентификация (React)
   - Инициализировать React SPA (Vite + TypeScript)
   - Настроить React Router: `/login`, `/admin/*`, `/raskhod`, `/raskhod/history`, `/alerts`
   - Реализовать страницу `/login`: форма логина, вызов `POST /api/auth/login`, сохранение токенов
@@ -117,18 +117,18 @@
   - Реализовать защищённые маршруты (PrivateRoute) с проверкой роли
   - _Requirements: 2.1, 2.3, 2.4, 7.4, 7.5_
 
-- [ ] 9. Web App — административная панель (React)
-  - [ ] 9.1 Реализовать навигацию и layout для роли admin
+- [~] 9. Web App — административная панель (React)
+  - [~] 9.1 Реализовать навигацию и layout для роли admin
     - Боковое меню с разделами: Пользователи, Сотрудники, Должности, Звания, Подразделения, Статусы
     - _Requirements: 3.5_
 
-  - [ ] 9.2 Реализовать CRUD-таблицы для каждого справочника
+  - [~] 9.2 Реализовать CRUD-таблицы для каждого справочника
     - Таблица с постраничной навигацией, кнопки «Добавить», «Редактировать», «Удалить»
     - Модальные формы создания/редактирования
     - Отображение ошибок HTTP 409 пользователю
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 10. Web App — расход личного состава (React)
+- [~] 10. Web App — расход личного состава (React)
   - Реализовать страницу `/raskhod`: форма со списком сотрудников подразделения
   - Статус «налицо» по умолчанию для каждого сотрудника
   - Выпадающий список статусов, мгновенное обновление без перезагрузки
@@ -137,39 +137,39 @@
   - Страница `/raskhod/history` с историей и просмотром деталей
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [ ] 11. Web App — панель тревоги (React)
+- [~] 11. Web App — панель тревоги (React)
   - Реализовать страницу `/alerts` с кнопкой «Тревога»
   - После нажатия — таблица сотрудников с колонками «Принял» / «Не ответил» и временем ответа
   - Polling каждые 10 секунд (`GET /api/alerts/:id/responses`) для обновления статусов
   - _Requirements: 5.1, 5.2, 5.5, 5.6_
 
-- [ ] 12. Checkpoint — проверить Web App end-to-end через автотесты
+- [~] 12. Checkpoint — проверить Web App end-to-end через автотесты
   - Все тесты проходят, ask the user if questions arise.
 
-- [ ] 13. Android App — базовая структура и аутентификация (Kotlin)
+- [~] 13. Android App — базовая структура и аутентификация (Kotlin)
   - Создать Android-проект (Kotlin, минимальный SDK совместимый с FCM)
   - Добавить зависимости: Retrofit, OkHttp, Firebase Messaging, Room, WorkManager
   - Реализовать `LoginActivity`: форма логина, вызов `POST /api/auth/login`, сохранение токенов в SharedPreferences/EncryptedSharedPreferences
   - Реализовать автоматическое обновление access-токена через OkHttp Interceptor
   - _Requirements: 2.1, 2.3, 2.4_
 
-- [ ] 14. Android App — FCM и получение тревоги (Kotlin)
-  - [ ] 14.1 Реализовать `FCMService` (extends `FirebaseMessagingService`)
+- [~] 14. Android App — FCM и получение тревоги (Kotlin)
+  - [~] 14.1 Реализовать `FCMService` (extends `FirebaseMessagingService`)
     - Приём push-уведомления о тревоге
     - Воспроизведение звукового сигнала (будильник)
     - Отображение уведомления с кнопкой «Принял»
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 14.2 Реализовать `AlertNotificationActivity`
+  - [~] 14.2 Реализовать `AlertNotificationActivity`
     - Кнопка «Принял» → вызов `POST /api/alerts/:id/respond`
     - _Requirements: 6.3_
 
-  - [ ] 14.3 Реализовать `OfflineQueue` (Room + WorkManager)
+  - [~] 14.3 Реализовать `OfflineQueue` (Room + WorkManager)
     - Сохранение ответа локально при отсутствии сети
     - WorkManager-задача для отправки при восстановлении соединения
     - _Requirements: 6.5_
 
-  - [ ] 14.4 Реализовать регистрацию FCM-токена при входе
+  - [~] 14.4 Реализовать регистрацию FCM-токена при входе
     - Получение токена через `FirebaseMessaging.getInstance().token`
     - Вызов `PUT /api/employees/me/fcm-token` после успешного логина
     - _Requirements: 6.6_
@@ -179,7 +179,7 @@
     - Тест: WorkManager отправляет ответ при восстановлении сети
     - _Requirements: 6.5_
 
-- [ ] 15. Валидация входящих данных (Backend)
+- [~] 15. Валидация входящих данных (Backend)
   - Добавить middleware валидации (zod или joi) для всех POST/PUT эндпоинтов
   - Возврат HTTP 400 с описанием ошибки при некорректном формате
   - _Requirements: 7.6_
@@ -190,7 +190,7 @@
   - Тест: разграничение доступа (commander не может обратиться к admin-эндпоинтам → HTTP 403)
   - _Requirements: 4.5, 5.2, 6.4, 7.1, 7.2, 7.3_
 
-- [ ] 17. Final checkpoint — все тесты проходят
+- [~] 17. Final checkpoint — все тесты проходят
   - Все тесты проходят, ask the user if questions arise.
 
 ## Notes

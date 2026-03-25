@@ -7,6 +7,7 @@ import employeesRouter from './routes/admin/employees';
 import * as referencesRouter from './routes/admin/references';
 import { authenticate, requireRole } from './middleware/auth';
 import raskhodRouter from './routes/raskhod';
+import alertsRouter from './routes/alerts';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -35,6 +36,9 @@ app.use('/api/user-statuses', authenticate, requireRole('admin'), referencesRout
 
 // Маршруты расхода личного состава (только commander)
 app.use('/api/raskhod', authenticate, requireRole('commander'), raskhodRouter);
+
+// Маршруты тревоги (только commander)
+app.use('/api/alerts', authenticate, requireRole('commander'), alertsRouter);
 
 // Запуск сервера
 async function start(): Promise<void> {
