@@ -104,7 +104,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       [user.id]
     );
 
-    res.json({ accessToken, refreshToken });
+    res.json({ data: { accessToken, refreshToken, role: user.role } });
   } catch (err) {
     console.error('Ошибка при входе:', err);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });

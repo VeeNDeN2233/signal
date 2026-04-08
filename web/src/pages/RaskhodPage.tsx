@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { CommanderNav } from '../components/CommanderNav'
 import apiClient from '../lib/apiClient'
 
 interface Employee {
@@ -32,6 +33,7 @@ export function RaskhodPage() {
   const [date, setDate] = useState<string>(todayStr())
   const [time, setTime] = useState<'09:00' | '21:00'>('09:00')
   const [entries, setEntries] = useState<EntryState[]>([])
+  const [searchQuery, setSearchQuery] = useState<string>('') // Поиск по ФИО
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -93,12 +95,17 @@ export function RaskhodPage() {
     return [emp.last_name, emp.first_name, emp.middle_name].filter(Boolean).join(' ')
   }
 
+  // Фильтрация сотрудников по поисковому запросу
+  const filteredEmployees = employees.filter((emp) => {
+    if (!searchQuery.trim()) return true
+    const query = searchQuery.toLowerCase()
+    const name = fullName(emp).toLowerCase()
+    return name.includes(query)
+  })
+
   return (
     <div style={pageStyle}>
-      <div style={headerRowStyle}>
-        <h1 style={titleStyle}>Расход личного состава</h1>
-        <Link to="/raskhod/history" style={historyLinkStyle}>История расходов →</Link>
-      </div>
+      <CommanderNav title="Расход личного состава" />
 
       {loadError && <div style={errorBannerStyle}>{loadError}</div>}
 
@@ -140,39 +147,60 @@ export function RaskhodPage() {
           {employees.length === 0 ? (
             <p style={{ color: '#64748b' }}>Нет сотрудников в подразделении</p>
           ) : (
-            <div style={tableWrapStyle}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>№</th>
-                    <th style={{ ...thStyle, textAlign: 'left' }}>ФИО</th>
-                    <th style={{ ...thStyle, textAlign: 'left' }}>Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((emp, idx) => {
-                    const entry = entries.find((en) => en.employee_id === emp.id)
-                    return (
-                      <tr key={emp.id} style={idx % 2 === 0 ? rowEvenStyle : rowOddStyle}>
-                        <td style={tdCenterStyle}>{idx + 1}</td>
-                        <td style={tdStyle}>{fullName(emp)}</td>
-                        <td style={tdStyle}>
-                          <select
-                            value={entry?.status_id ?? ''}
-                            onChange={(ev) => setEntryStatus(emp.id, Number(ev.target.value))}
-                            style={selectStyle}
-                          >
-                            {statuses.map((s) => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                          </select>
-                        </td>
+            <>
+              {/* Поле поиска */}
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  type="text"
+                  placeholder="Поиск по ФИО..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    width: '100%',
+                    maxWidth: 400,
+                  }}
+                />
+              </div>
+
+              {filteredEmployees.length === 0 ? (
+                <p style={{ color: '#64748b' }}>Сотрудники не найдены</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>№</th>
+                        <th style={{ ...thStyle, textAlign: 'left' }}>ФИО</th>
+                        <th style={{ ...thStyle, textAlign: 'left' }}>Статус</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {filteredEmployees.map((emp, idx) => {
+                        const entry = entries.find((en) => en.employee_id === emp.id)
+                        return (
+                          <tr key={emp.id} style={idx % 2 === 0 ? rowEvenStyle : rowOddStyle}>
+                            <td style={tdCenterStyle}>{idx + 1}</td>
+                            <td style={tdStyle}>{fullName(emp)}</td>
+                            <td style={tdStyle}>
+                              <select
+                                value={entry?.status_id ?? ''}
+                                onChange={(ev) => setEntryStatus(emp.id, Number(ev.target.value))}
+                                style={selectStyle}
+                              >
+                                {statuses.map((s) => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
 
           {/* Сообщения */}
@@ -200,25 +228,6 @@ const pageStyle: React.CSSProperties = {
   margin: '0 auto',
   padding: '24px 16px',
   fontFamily: 'system-ui, sans-serif',
-}
-
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 24,
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 22,
-  color: '#1e293b',
-}
-
-const historyLinkStyle: React.CSSProperties = {
-  color: '#2563eb',
-  textDecoration: 'none',
-  fontSize: 14,
 }
 
 const controlsRowStyle: React.CSSProperties = {

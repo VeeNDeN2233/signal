@@ -1,0 +1,8 @@
+/.gradle/
+/build/
+/local.properties
+**/build/
+
+# Firebase secrets/config
+/app/google-services.json
+

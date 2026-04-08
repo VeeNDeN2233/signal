@@ -92,7 +92,10 @@ export function RaskhodHistoryPage() {
     <div style={pageStyle}>
       <div style={headerRowStyle}>
         <h1 style={titleStyle}>История расходов</h1>
-        <Link to="/raskhod" style={backLinkStyle}>← Новый расход</Link>
+        <div style={navLinksStyle}>
+          <Link to="/raskhod" style={navLinkStyle}>Расход</Link>
+          <Link to="/alerts" style={navLinkStyle}>Тревога</Link>
+        </div>
       </div>
 
       {loadError && <div style={errorBannerStyle}>{loadError}</div>}
@@ -256,6 +259,23 @@ const backLinkStyle: React.CSSProperties = {
   color: '#2563eb',
   textDecoration: 'none',
   fontSize: 14,
+}
+
+const navLinksStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 16,
+  alignItems: 'center',
+}
+
+const navLinkStyle: React.CSSProperties = {
+  color: '#2563eb',
+  textDecoration: 'none',
+  fontSize: 14,
+  fontWeight: 500,
+  padding: '6px 12px',
+  borderRadius: 4,
+  border: '1px solid #2563eb',
+  transition: 'all 0.2s',
 }
 
 const tableWrapStyle: React.CSSProperties = {

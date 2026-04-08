@@ -25,7 +25,9 @@ interface FormState {
   position_id: string
   rank_id: string
   unit_id: string
-  user_id: string
+  user_type: '' | 'user' | 'commander' // Новое поле: тип сотрудника
+  login: string // Логин для новой учётной записи
+  password: string // Пароль для новой учётной записи
 }
 
 const emptyForm: FormState = {
@@ -35,7 +37,9 @@ const emptyForm: FormState = {
   position_id: '',
   rank_id: '',
   unit_id: '',
-  user_id: '',
+  user_type: '',
+  login: '',
+  password: '',
 }
 
 export function EmployeesPage() {
@@ -82,7 +86,9 @@ export function EmployeesPage() {
       position_id: row.position_id ? String(row.position_id) : '',
       rank_id: row.rank_id ? String(row.rank_id) : '',
       unit_id: String(row.unit_id),
-      user_id: row.user_id ? String(row.user_id) : '',
+      user_type: '', // При редактировании не показываем создание учётной записи
+      login: '',
+      password: '',
     })
     setFormError(null)
     setModalOpen(true)
@@ -100,25 +106,50 @@ export function EmployeesPage() {
     if (!form.first_name.trim()) { setFormError('Имя обязательно'); return }
     if (!form.unit_id) { setFormError('Подразделение обязательно'); return }
 
+    // Валидация для создания учётной записи
+    if (!editing && form.user_type) {
+      if (!form.login.trim()) { setFormError('Логин обязателен'); return }
+      if (!form.password.trim()) { setFormError('Пароль обязателен'); return }
+    }
+
     setSubmitting(true)
     setFormError(null)
 
-    const body: Record<string, unknown> = {
-      last_name: form.last_name.trim(),
-      first_name: form.first_name.trim(),
-      middle_name: form.middle_name.trim() || null,
-      position_id: form.position_id ? Number(form.position_id) : null,
-      rank_id: form.rank_id ? Number(form.rank_id) : null,
-      unit_id: Number(form.unit_id),
-      user_id: form.user_id ? Number(form.user_id) : null,
-    }
+    try {
+      // Если нужно создать учётную запись, сначала создаём user
+      let userId: number | null = null
+      if (!editing && form.user_type) {
+        const roleId = form.user_type === 'commander' ? 3 : 1 // commander=3, user=1
+        const userRes = await apiClient.post<{ data: { id: number } }>('/users', {
+          login: form.login.trim(),
+          password: form.password,
+          role_id: roleId,
+        })
+        userId = userRes.data.data.id
+      }
 
-    const err = editing ? await update(editing.id, body) : await create(body)
-    setSubmitting(false)
-    if (err) {
-      setFormError(err)
-    } else {
-      setModalOpen(false)
+      // Создаём/обновляем сотрудника
+      const body: Record<string, unknown> = {
+        last_name: form.last_name.trim(),
+        first_name: form.first_name.trim(),
+        middle_name: form.middle_name.trim() || null,
+        position_id: form.position_id ? Number(form.position_id) : null,
+        rank_id: form.rank_id ? Number(form.rank_id) : null,
+        unit_id: Number(form.unit_id),
+        user_id: userId,
+      }
+
+      const err = editing ? await update(editing.id, body) : await create(body)
+      setSubmitting(false)
+      if (err) {
+        setFormError(err)
+      } else {
+        setModalOpen(false)
+      }
+    } catch (err: unknown) {
+      setSubmitting(false)
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setFormError(axiosErr.response?.data?.error ?? 'Ошибка при сохранении')
     }
   }
 
@@ -195,12 +226,28 @@ export function EmployeesPage() {
               </select>
             </Field>
 
-            <Field label="Учётная запись">
-              <select style={inputStyle} value={form.user_id} onChange={(e) => setField('user_id', e.target.value)}>
-                <option value="">— не привязана —</option>
-                {users.map((u) => <option key={u.id} value={u.id}>{u.login}</option>)}
-              </select>
-            </Field>
+            {!editing && (
+              <>
+                <Field label="Тип сотрудника">
+                  <select style={inputStyle} value={form.user_type} onChange={(e) => setField('user_type', e.target.value)}>
+                    <option value="">— без учётной записи —</option>
+                    <option value="user">Сотрудник (вход через Android)</option>
+                    <option value="commander">Руководитель (вход через сайт)</option>
+                  </select>
+                </Field>
+
+                {form.user_type && (
+                  <>
+                    <Field label="Логин *">
+                      <input style={inputStyle} value={form.login} onChange={(e) => setField('login', e.target.value)} />
+                    </Field>
+                    <Field label="Пароль *">
+                      <input style={inputStyle} type="password" value={form.password} onChange={(e) => setField('password', e.target.value)} />
+                    </Field>
+                  </>
+                )}
+              </>
+            )}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button type="button" onClick={() => setModalOpen(false)} style={cancelBtnStyle}>Отмена</button>

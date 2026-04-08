@@ -5,6 +5,35 @@ import { requireRole } from '../middleware/auth';
 
 const router = Router();
 
+// GET /api/employees/me — данные текущего сотрудника (имя, подразделение)
+router.get('/me', async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT e.id, e.last_name, e.first_name, e.middle_name,
+              u.name AS unit_name, p.name AS position_name, r.name AS rank_name
+       FROM employees e
+       LEFT JOIN units u ON u.id = e.unit_id
+       LEFT JOIN positions p ON p.id = e.position_id
+       LEFT JOIN ranks r ON r.id = e.rank_id
+       WHERE e.user_id = $1
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.json({ data: null });
+      return;
+    }
+
+    res.json({ data: result.rows[0] });
+  } catch (err) {
+    console.error('Ошибка при получении данных сотрудника:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // GET /api/employees/unit — список сотрудников подразделения (для commander)
 router.get('/unit', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
   const unit_id = req.user?.unit_id;
