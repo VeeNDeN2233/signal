@@ -7,5 +7,14 @@
     <color name="teal_700">#018786</color>
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
-</resources>
 
+    <!-- App palette -->
+    <color name="bg_page">#F1F5F9</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_muted">#94A3B8</color>
+    <color name="accent_blue">#2563EB</color>
+    <color name="accent_red">#DC2626</color>
+    <color name="status_green">#22C55E</color>
+    <color name="card_border">#E2E8F0</color>
+</resources>
