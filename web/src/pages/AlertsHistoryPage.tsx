@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { CommanderNav } from '../components/CommanderNav'
 import apiClient from '../lib/apiClient'
 
 interface AlertRecord {
@@ -32,28 +32,35 @@ function formatTime(iso: string | null): string {
   return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function formatMonthYear(iso: string): string {
+  return new Date(iso).toLocaleString('ru-RU', { month: 'long', year: 'numeric' })
+}
+
 export function AlertsHistoryPage() {
   const [records, setRecords] = useState<AlertRecord[]>([])
-  const [meta, setMeta] = useState<Meta>({ page: 1, page_size: 20, total: 0 })
-  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState<Meta>({ page: 1, page_size: 200, total: 0 })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const [search, setSearch] = useState('')
+  const [coverageFilter, setCoverageFilter] = useState<'all' | 'full' | 'partial'>('all')
+  const [detailSearch, setDetailSearch] = useState('')
 
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<AlertResponse[] | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
-  const fetchHistory = useCallback((p: number) => {
+  const fetchHistory = useCallback(() => {
     setLoading(true)
     setLoadError(null)
-    apiClient.get<{ data: AlertRecord[]; meta: Meta }>('/alerts', { params: { page: p, page_size: 20 } })
+    apiClient.get<{ data: AlertRecord[]; meta: Meta }>('/alerts', { params: { page: 1, page_size: 200 } })
       .then((r) => { setRecords(r.data.data); setMeta(r.data.meta) })
       .catch(() => setLoadError('Ошибка загрузки истории тревог'))
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { fetchHistory(page) }, [fetchHistory, page])
+  useEffect(() => { fetchHistory() }, [fetchHistory])
 
   function toggleDetail(id: number) {
     if (selectedId === id) { setSelectedId(null); setDetail(null); return }
@@ -67,146 +74,250 @@ export function AlertsHistoryPage() {
       .finally(() => setDetailLoading(false))
   }
 
-  const totalPages = Math.max(1, Math.ceil(meta.total / meta.page_size))
+  const filteredRecords = useMemo(() => {
+    return records.filter((rec) => {
+      if (coverageFilter === 'full' && rec.total_employees !== rec.responded_count) return false
+      if (coverageFilter === 'partial' && rec.total_employees === rec.responded_count) return false
+      if (!search.trim()) return true
+      const q = search.trim().toLowerCase()
+      const text = `${formatDateTime(rec.created_at)} ${rec.created_at}`.toLowerCase()
+      return text.includes(q)
+    })
+  }, [records, search, coverageFilter])
+
+  const groupedRecords = useMemo(() => {
+    const map = new Map<string, AlertRecord[]>()
+    for (const rec of filteredRecords) {
+      const key = rec.created_at.slice(0, 7)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(rec)
+    }
+    return Array.from(map.entries()).map(([key, items]) => ({ key, items }))
+  }, [filteredRecords])
+
+  const filteredDetail = useMemo(() => {
+    if (!detail) return []
+    if (!detailSearch.trim()) return detail
+    const q = detailSearch.trim().toLowerCase()
+    return detail.filter((resp) =>
+      [resp.last_name, resp.first_name, resp.middle_name].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [detail, detailSearch])
+
+  const respondedCount = detail?.filter((x) => x.responded_at !== null).length ?? 0
+  const totalCount = detail?.length ?? 0
 
   return (
     <div style={pageStyle}>
-      <div style={headerRowStyle}>
-        <h1 style={titleStyle}>История тревог</h1>
-        <div style={navLinksStyle}>
-          <Link to="/alerts" style={navLinkStyle}>Тревога</Link>
-          <Link to="/raskhod" style={navLinkStyle}>Расход</Link>
-          <Link to="/raskhod/history" style={navLinkStyle}>История расходов</Link>
+      <CommanderNav title="История тревог" />
+
+      <div style={filtersRowStyle}>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск по дате/времени..."
+          style={searchInputStyle}
+        />
+        <div style={chipsRowStyle}>
+          <button onClick={() => setCoverageFilter('all')} style={coverageFilter === 'all' ? chipActive : chipDefault}>Все</button>
+          <button onClick={() => setCoverageFilter('full')} style={coverageFilter === 'full' ? chipActive : chipDefault}>Полный отклик</button>
+          <button onClick={() => setCoverageFilter('partial')} style={coverageFilter === 'partial' ? chipActive : chipDefault}>Есть неответившие</button>
         </div>
       </div>
 
-      {loadError && <div style={errorBannerStyle}>{loadError}</div>}
-
-      {loading ? (
-        <p style={{ color: '#64748b' }}>Загрузка...</p>
-      ) : records.length === 0 ? (
-        <p style={{ color: '#64748b' }}>Тревог пока не было</p>
-      ) : (
-        <>
-          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
-            Нажмите на строку для просмотра откликов
-          </p>
-          <div style={tableWrapStyle}>
-            <table style={tableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Дата и время</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((rec, idx) => {
+      <div style={layoutStyle}>
+        <div style={leftPaneStyle}>
+          {loadError && <div style={errorBannerStyle}>{loadError}</div>}
+          {loading ? (
+            <p style={{ color: '#64748b' }}>Загрузка...</p>
+          ) : filteredRecords.length === 0 ? (
+            <p style={{ color: '#64748b' }}>Записей не найдено</p>
+          ) : (
+            groupedRecords.map((group) => (
+              <div key={group.key} style={{ marginBottom: 12 }}>
+                <div style={monthHeaderStyle}>{formatMonthYear(group.items[0].created_at)}</div>
+                {group.items.map((rec) => {
                   const isSelected = selectedId === rec.id
                   return (
-                    <React.Fragment key={rec.id}>
-                      <tr
-                        onClick={() => toggleDetail(rec.id)}
-                        style={{
-                          ...(idx % 2 === 0 ? rowEvenStyle : rowOddStyle),
-                          cursor: 'pointer',
-                          ...(isSelected ? selectedRowStyle : {}),
-                        }}
-                      >
-                        <td style={tdStyle}>{formatDateTime(rec.created_at)}</td>
-                      </tr>
-
-                      {isSelected && (
-                        <tr>
-                          <td colSpan={1} style={detailCellStyle}>
-                            {detailLoading && <p style={{ color: '#64748b', margin: 0 }}>Загрузка...</p>}
-                            {detailError && <div style={errorBannerStyle}>{detailError}</div>}
-                            {detail && (
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b', marginBottom: 10 }}>
-                                  Тревога от {formatDateTime(rec.created_at)}
-                                </div>
-                                <table style={{ ...tableStyle, fontSize: 13 }}>
-                                  <thead>
-                                    <tr>
-                                      <th style={{ ...thStyle, fontSize: 12 }}>№</th>
-                                      <th style={{ ...thStyle, textAlign: 'left', fontSize: 12 }}>ФИО</th>
-                                      <th style={{ ...thStyle, fontSize: 12 }}>Статус</th>
-                                      <th style={{ ...thStyle, fontSize: 12 }}>Время ответа</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {detail.map((resp, i) => (
-                                      <tr key={resp.employee_id} style={i % 2 === 0 ? rowEvenStyle : rowOddStyle}>
-                                        <td style={{ ...tdCenterStyle, fontSize: 13 }}>{i + 1}</td>
-                                        <td style={{ ...tdStyle, fontSize: 13 }}>
-                                          {[resp.last_name, resp.first_name, resp.middle_name].filter(Boolean).join(' ')}
-                                        </td>
-                                        <td style={{ ...tdCenterStyle, fontSize: 13 }}>
-                                          {resp.responded_at !== null ? (
-                                            <span style={statusOk}>Принял</span>
-                                          ) : (
-                                            <span style={statusNo}>Не ответил</span>
-                                          )}
-                                        </td>
-                                        <td style={{ ...tdCenterStyle, fontSize: 13 }}>
-                                          {formatTime(resp.responded_at)}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                    <button
+                      key={rec.id}
+                      onClick={() => toggleDetail(rec.id)}
+                      style={isSelected ? recordBtnActive : recordBtn}
+                    >
+                      {formatDateTime(rec.created_at)}
+                    </button>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            ))
+          )}
+        </div>
 
-          {totalPages > 1 && (
-            <div style={paginationStyle}>
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={page === 1 ? disabledPageBtnStyle : pageBtnStyle}>
-                ← Назад
-              </button>
-              <span style={{ fontSize: 14, color: '#374151' }}>Страница {page} из {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={page === totalPages ? disabledPageBtnStyle : pageBtnStyle}>
-                Вперёд →
-              </button>
+        <div style={rightPaneStyle}>
+          {!selectedId && <div style={emptyCardStyle}>Выберите запись тревоги слева</div>}
+          {selectedId && (
+            <div style={detailCardStyle}>
+              {detailLoading && <p style={{ color: '#64748b' }}>Загрузка...</p>}
+              {detailError && <div style={errorBannerStyle}>{detailError}</div>}
+              {detail && (
+                <>
+                  <div style={detailHeaderStyle}>
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>Отклики по тревоге</div>
+                    <div style={{ fontSize: 13, color: '#64748b' }}>
+                      Приняли: {respondedCount} / {totalCount}
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={detailSearch}
+                    onChange={(e) => setDetailSearch(e.target.value)}
+                    placeholder="Поиск сотрудника по ФИО..."
+                    style={{ ...searchInputStyle, marginBottom: 10 }}
+                  />
+                  <table style={{ ...tableStyle, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...thStyle, fontSize: 12 }}>№</th>
+                        <th style={{ ...thStyle, textAlign: 'left', fontSize: 12 }}>ФИО</th>
+                        <th style={{ ...thStyle, fontSize: 12 }}>Статус</th>
+                        <th style={{ ...thStyle, fontSize: 12 }}>Время ответа</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDetail.map((resp, i) => (
+                        <tr key={resp.employee_id} style={i % 2 === 0 ? rowEvenStyle : rowOddStyle}>
+                          <td style={{ ...tdCenterStyle, fontSize: 13 }}>{i + 1}</td>
+                          <td style={{ ...tdStyle, fontSize: 13 }}>
+                            {[resp.last_name, resp.first_name, resp.middle_name].filter(Boolean).join(' ')}
+                          </td>
+                          <td style={{ ...tdCenterStyle, fontSize: 13 }}>
+                            {resp.responded_at !== null ? (
+                              <span style={statusOk}>Принял</span>
+                            ) : (
+                              <span style={statusNo}>Не ответил</span>
+                            )}
+                          </td>
+                          <td style={{ ...tdCenterStyle, fontSize: 13 }}>{formatTime(resp.responded_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
           )}
-        </>
-      )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
+        Загружено записей: {records.length} из {meta.total}
+      </div>
     </div>
   )
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const pageStyle: React.CSSProperties = { maxWidth: 900, margin: '0 auto', padding: '24px 16px', fontFamily: 'system-ui, sans-serif' }
-const headerRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }
-const titleStyle: React.CSSProperties = { margin: 0, fontSize: 22, color: '#1e293b' }
-const navLinksStyle: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }
-const navLinkStyle: React.CSSProperties = { color: '#2563eb', textDecoration: 'none', fontSize: 14, fontWeight: 500, padding: '6px 12px', borderRadius: 4, border: '1px solid #2563eb' }
-
+const pageStyle: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '24px 16px', fontFamily: 'system-ui, sans-serif' }
 const errorBannerStyle: React.CSSProperties = { background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 4, padding: '8px 12px', marginBottom: 12, fontSize: 14 }
 
-const tableWrapStyle: React.CSSProperties = { overflowX: 'auto', marginBottom: 16 }
+const filtersRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 12,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  marginBottom: 14,
+}
+const searchInputStyle: React.CSSProperties = {
+  width: 280,
+  maxWidth: '100%',
+  padding: '8px 10px',
+  border: '1px solid #cbd5e1',
+  borderRadius: 4,
+  fontSize: 14,
+}
+const chipsRowStyle: React.CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap' }
+const chipDefault: React.CSSProperties = {
+  border: '1px solid #cbd5e1',
+  borderRadius: 16,
+  padding: '5px 10px',
+  fontSize: 12,
+  background: '#fff',
+  color: '#475569',
+  cursor: 'pointer',
+}
+const chipActive: React.CSSProperties = { ...chipDefault, border: '1px solid #2563eb', color: '#1d4ed8', background: '#eff6ff' }
+
+const layoutStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '330px 1fr',
+  gap: 14,
+  alignItems: 'start',
+}
+const leftPaneStyle: React.CSSProperties = {
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  background: '#fff',
+  padding: 10,
+  maxHeight: '70vh',
+  overflow: 'auto',
+}
+const rightPaneStyle: React.CSSProperties = {
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  background: '#fff',
+  padding: 14,
+  minHeight: 320,
+}
+const monthHeaderStyle: React.CSSProperties = {
+  fontSize: 11,
+  textTransform: 'uppercase',
+  color: '#94a3b8',
+  letterSpacing: '0.06em',
+  fontWeight: 700,
+  marginBottom: 6,
+  paddingLeft: 4,
+}
+const recordBtn: React.CSSProperties = {
+  width: '100%',
+  textAlign: 'left',
+  border: '1px solid #e2e8f0',
+  background: '#fff',
+  padding: '8px 10px',
+  borderRadius: 6,
+  cursor: 'pointer',
+  marginBottom: 6,
+  color: '#1e293b',
+  fontSize: 14,
+}
+const recordBtnActive: React.CSSProperties = {
+  ...recordBtn,
+  border: '1px solid #2563eb',
+  background: '#eff6ff',
+}
+const emptyCardStyle: React.CSSProperties = {
+  color: '#94a3b8',
+  fontSize: 14,
+  minHeight: 240,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+const detailCardStyle: React.CSSProperties = {}
+const detailHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 10,
+}
+
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 14 }
 const thStyle: React.CSSProperties = { background: '#f1f5f9', padding: '8px 12px', borderBottom: '2px solid #e2e8f0', fontWeight: 600, color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }
 const tdStyle: React.CSSProperties = { padding: '9px 12px', borderBottom: '1px solid #e2e8f0', color: '#1e293b', textAlign: 'left' }
 const tdCenterStyle: React.CSSProperties = { ...tdStyle, textAlign: 'center' }
 const rowEvenStyle: React.CSSProperties = { background: '#fff' }
 const rowOddStyle: React.CSSProperties = { background: '#f8fafc' }
-const selectedRowStyle: React.CSSProperties = { background: '#eff6ff' }
-
-const detailCellStyle: React.CSSProperties = { padding: '12px 16px', background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }
 
 const statusOk: React.CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 500, background: '#dcfce7', color: '#15803d' }
 const statusNo: React.CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 500, background: '#fee2e2', color: '#b91c1c' }
-
-const paginationStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }
-const pageBtnStyle: React.CSSProperties = { background: '#f1f5f9', color: '#374151', border: '1px solid #cbd5e1', borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13 }
-const disabledPageBtnStyle: React.CSSProperties = { ...pageBtnStyle, color: '#94a3b8', cursor: 'not-allowed' }

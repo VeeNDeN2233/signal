@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 interface CommanderNavProps {
@@ -20,9 +20,10 @@ export function CommanderNav({ title }: CommanderNavProps) {
       <h1 style={titleStyle}>{title}</h1>
       <div style={navContainerStyle}>
         <div style={navLinksStyle}>
-          <Link to="/raskhod" style={navLinkStyle}>Расход</Link>
-          <Link to="/alerts" style={navLinkStyle}>Тревога</Link>
-          <Link to="/raskhod/history" style={navLinkStyle}>История</Link>
+          <NavLink to="/alerts" style={({ isActive }) => navLinkStyle(isActive)}>Тревога</NavLink>
+          <NavLink to="/alerts/history" style={({ isActive }) => navLinkStyle(isActive)}>История тревог</NavLink>
+          <NavLink to="/raskhod" style={({ isActive }) => navLinkStyle(isActive)}>Расход</NavLink>
+          <NavLink to="/raskhod/history" style={({ isActive }) => navLinkStyle(isActive)}>История расходов</NavLink>
         </div>
         <button onClick={handleLogout} style={logoutBtnStyle}>
           Выход
@@ -61,15 +62,18 @@ const navLinksStyle: React.CSSProperties = {
   alignItems: 'center',
 }
 
-const navLinkStyle: React.CSSProperties = {
-  color: '#2563eb',
-  textDecoration: 'none',
-  fontSize: 14,
-  fontWeight: 500,
-  padding: '6px 12px',
-  borderRadius: 4,
-  border: '1px solid #2563eb',
-  transition: 'all 0.2s',
+function navLinkStyle(isActive: boolean): React.CSSProperties {
+  return {
+    color: isActive ? '#fff' : '#1d4ed8',
+    background: isActive ? '#1d4ed8' : '#fff',
+    textDecoration: 'none',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '6px 10px',
+    borderRadius: 4,
+    border: '1px solid #2563eb',
+    transition: 'all 0.2s',
+  }
 }
 
 const logoutBtnStyle: React.CSSProperties = {

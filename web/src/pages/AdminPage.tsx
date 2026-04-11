@@ -5,6 +5,7 @@ import apiClient from '../lib/apiClient'
 
 const NAV_ITEMS = [
   { to: '/admin/roster', label: 'Личный состав' },
+  { to: '/admin/users', label: 'Учётные записи' },
   { to: '/admin/positions', label: 'Должности' },
   { to: '/admin/ranks', label: 'Звания' },
   { to: '/admin/units', label: 'Подразделения' },

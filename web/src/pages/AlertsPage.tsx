@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { CommanderNav } from '../components/CommanderNav'
 import apiClient from '../lib/apiClient'
 
 interface AlertResponse {
@@ -107,14 +107,7 @@ export function AlertsPage() {
 
   return (
     <div style={pageStyle}>
-      <div style={headerRowStyle}>
-        <h1 style={titleStyle}>Панель тревоги</h1>
-        <div style={navLinksStyle}>
-          <Link to="/alerts/history" style={navLinkStyle}>История тревог</Link>
-          <Link to="/raskhod" style={navLinkStyle}>Расход</Link>
-          <Link to="/raskhod/history" style={navLinkStyle}>История расходов</Link>
-        </div>
-      </div>
+      <CommanderNav title="Панель тревоги" />
 
       {error && <div style={errorBannerStyle}>{error}</div>}
 
@@ -202,36 +195,6 @@ const pageStyle: React.CSSProperties = {
   margin: '0 auto',
   padding: '24px 16px',
   fontFamily: 'system-ui, sans-serif',
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 22,
-  color: '#1e293b',
-}
-
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 24,
-}
-
-const navLinksStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 16,
-  alignItems: 'center',
-}
-
-const navLinkStyle: React.CSSProperties = {
-  color: '#2563eb',
-  textDecoration: 'none',
-  fontSize: 14,
-  fontWeight: 500,
-  padding: '6px 12px',
-  borderRadius: 4,
-  border: '1px solid #2563eb',
-  transition: 'all 0.2s',
 }
 
 const errorBannerStyle: React.CSSProperties = {

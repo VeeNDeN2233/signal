@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { CommanderNav } from '../components/CommanderNav'
 import apiClient from '../lib/apiClient'
 
 interface RaskhodRecord {
@@ -244,13 +244,7 @@ export function RaskhodHistoryPage() {
   return (
     <div style={pageStyle}>
       {/* Шапка */}
-      <div style={headerRowStyle}>
-        <h1 style={titleStyle}>История расходов личного состава</h1>
-        <div style={navLinksStyle}>
-          <Link to="/raskhod" style={navLinkStyle}>Новый расход</Link>
-          <Link to="/alerts" style={navLinkStyle}>Тревога</Link>
-        </div>
-      </div>
+      <CommanderNav title="История расходов личного состава" />
 
       {/* Фильтры */}
       <div style={filtersRowStyle}>
@@ -484,16 +478,6 @@ function summaryChipStyle(name: string): React.CSSProperties {
 const pageStyle: React.CSSProperties = {
   maxWidth: 1100, margin: '0 auto', padding: '24px 16px', fontFamily: 'system-ui, sans-serif',
 }
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10,
-}
-const titleStyle: React.CSSProperties = { margin: 0, fontSize: 20, color: '#1e293b', fontWeight: 700 }
-const navLinksStyle: React.CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' }
-const navLinkStyle: React.CSSProperties = {
-  color: '#2563eb', textDecoration: 'none', fontSize: 14, fontWeight: 500,
-  padding: '6px 12px', borderRadius: 4, border: '1px solid #2563eb',
-}
-
 const filtersRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap',
   background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
