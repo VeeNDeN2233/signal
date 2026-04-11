@@ -4,31 +4,40 @@ import { pool } from '../../db';
 
 const router = Router();
 
-// GET /api/employees — список сотрудников с пагинацией (JOIN positions, ranks, units)
+// GET /api/employees — список сотрудников с пагинацией (поддержка фильтра ?unit_id=)
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const page_size = Math.max(1, parseInt(req.query.page_size as string) || 20);
+  const page_size = Math.max(1, parseInt(req.query.page_size as string) || 200);
   const offset = (page - 1) * page_size;
+  const unit_id = req.query.unit_id ? parseInt(req.query.unit_id as string) : null;
 
   try {
-    const countResult = await pool.query('SELECT COUNT(*) FROM employees');
+    const whereClause = unit_id ? 'WHERE e.unit_id = $3' : '';
+    const countParams: unknown[] = unit_id ? [unit_id] : [];
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM employees e ${unit_id ? 'WHERE e.unit_id = $1' : ''}`,
+      countParams
+    );
     const total = parseInt(countResult.rows[0].count, 10);
 
+    const queryParams: unknown[] = unit_id ? [page_size, offset, unit_id] : [page_size, offset];
     const result = await pool.query(
       `SELECT
          e.id, e.user_id, e.last_name, e.first_name, e.middle_name,
          e.position_id, p.name AS position_name,
          e.rank_id, r.name AS rank_name,
-         e.birth_date,
          e.unit_id, u.name AS unit_name,
-         e.phone_number
+         e.phone_number,
+         ul.login AS user_login, ul.role_id AS user_role_id
        FROM employees e
        LEFT JOIN positions p ON p.id = e.position_id
        LEFT JOIN ranks r ON r.id = e.rank_id
        JOIN units u ON u.id = e.unit_id
-       ORDER BY e.id
+       LEFT JOIN users ul ON ul.id = e.user_id
+       ${whereClause}
+       ORDER BY e.last_name, e.first_name
        LIMIT $1 OFFSET $2`,
-      [page_size, offset]
+      queryParams
     );
 
     res.json({ data: result.rows, meta: { page, page_size, total } });

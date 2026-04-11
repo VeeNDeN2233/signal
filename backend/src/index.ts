@@ -6,6 +6,7 @@ import usersRouter from './routes/admin/users';
 import employeesRouter from './routes/admin/employees';
 import * as referencesRouter from './routes/admin/references';
 import { authenticate, requireRole } from './middleware/auth';
+import auditLogRouter from './routes/admin/auditLog';
 import raskhodRouter from './routes/raskhod';
 import alertsRouter from './routes/alerts';
 import employeesMeRouter from './routes/employees-me';
@@ -37,6 +38,8 @@ app.use('/api/positions', authenticate, requireRole('admin'), referencesRouter.p
 app.use('/api/ranks', authenticate, requireRole('admin'), referencesRouter.ranks);
 app.use('/api/units', authenticate, requireRole('admin'), referencesRouter.units);
 app.use('/api/user-statuses', authenticate, requireRole('admin'), referencesRouter.userStatuses);
+app.use('/api/roles', authenticate, requireRole('admin'), referencesRouter.roles);
+app.use('/api/audit-log', authenticate, requireRole('admin'), auditLogRouter);
 
 // Маршруты расхода личного состава (только commander)
 app.use('/api/raskhod', authenticate, requireRole('commander'), raskhodRouter);

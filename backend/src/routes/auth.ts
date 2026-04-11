@@ -55,9 +55,10 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    // Ищем пользователя с JOIN на roles и employees (для unit_id)
+    // Ищем пользователя, unit_id берём из employees (приоритет) или из users.unit_id
     const userResult = await pool.query(
-      `SELECT u.id, u.password_hash, r.name AS role, e.unit_id
+      `SELECT u.id, u.password_hash, r.name AS role,
+              COALESCE(e.unit_id, u.unit_id) AS unit_id
        FROM users u
        JOIN roles r ON r.id = u.role_id
        LEFT JOIN employees e ON e.user_id = u.id
@@ -129,7 +130,8 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
   try {
     // Проверяем наличие токена в БД
     const tokenResult = await pool.query(
-      `SELECT rt.id, rt.user_id, rt.expires_at, u.role_id, r.name AS role, e.unit_id
+      `SELECT rt.id, rt.user_id, rt.expires_at, u.role_id, r.name AS role,
+              COALESCE(e.unit_id, u.unit_id) AS unit_id
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        JOIN roles r ON r.id = u.role_id

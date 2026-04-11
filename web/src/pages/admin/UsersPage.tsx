@@ -10,6 +10,9 @@ interface User {
   role_id: number
   unit_id: number | null
   user_status_id: number | null
+  last_name: string | null
+  first_name: string | null
+  middle_name: string | null
 }
 
 interface Role {
@@ -33,6 +36,9 @@ interface FormState {
   role_id: string
   unit_id: string
   user_status_id: string
+  last_name: string
+  first_name: string
+  middle_name: string
 }
 
 const emptyForm: FormState = {
@@ -41,6 +47,9 @@ const emptyForm: FormState = {
   role_id: '',
   unit_id: '',
   user_status_id: '',
+  last_name: '',
+  first_name: '',
+  middle_name: '',
 }
 
 export function UsersPage() {
@@ -101,6 +110,9 @@ export function UsersPage() {
       role_id: String(row.role_id),
       unit_id: row.unit_id ? String(row.unit_id) : '',
       user_status_id: row.user_status_id ? String(row.user_status_id) : '',
+      last_name: row.last_name ?? '',
+      first_name: row.first_name ?? '',
+      middle_name: row.middle_name ?? '',
     })
     setFormError(null)
     setModalOpen(true)
@@ -126,6 +138,9 @@ export function UsersPage() {
       role_id: Number(form.role_id),
       unit_id: form.unit_id ? Number(form.unit_id) : null,
       user_status_id: form.user_status_id ? Number(form.user_status_id) : null,
+      last_name: form.last_name.trim() || null,
+      first_name: form.first_name.trim() || null,
+      middle_name: form.middle_name.trim() || null,
     }
     if (!editing || form.password.trim()) {
       body.password = form.password
@@ -157,6 +172,10 @@ export function UsersPage() {
           columns={[
             { key: 'id', label: 'ID' },
             { key: 'login', label: 'Логин' },
+            {
+              key: 'last_name', label: 'ФИО',
+              render: (r) => [r.last_name, r.first_name, r.middle_name].filter(Boolean).join(' ') || '—'
+            },
             { key: 'role_id', label: 'Роль', render: (r) => roleName(r.role_id) },
             { key: 'unit_id', label: 'Подразделение', render: (r) => unitName(r.unit_id) },
             { key: 'user_status_id', label: 'Статус', render: (r) => statusName(r.user_status_id) },
@@ -180,13 +199,29 @@ export function UsersPage() {
           <form onSubmit={handleSubmit}>
             {formError && <div style={errorBannerStyle}>{formError}</div>}
 
-            <Field label="Логин">
+            <div style={sectionLabelStyle}>Учётная запись</div>
+
+            <Field label="Логин *">
               <input style={inputStyle} value={form.login} onChange={(e) => setField('login', e.target.value)} autoFocus />
             </Field>
 
-            <Field label={editing ? 'Новый пароль (оставьте пустым, чтобы не менять)' : 'Пароль'}>
+            <Field label={editing ? 'Новый пароль (оставьте пустым, чтобы не менять)' : 'Пароль *'}>
               <input style={inputStyle} type="password" value={form.password} onChange={(e) => setField('password', e.target.value)} />
             </Field>
+
+            <div style={sectionLabelStyle}>ФИО сотрудника</div>
+
+            <Field label="Фамилия">
+              <input style={inputStyle} value={form.last_name} onChange={(e) => setField('last_name', e.target.value)} placeholder="Иванов" />
+            </Field>
+            <Field label="Имя">
+              <input style={inputStyle} value={form.first_name} onChange={(e) => setField('first_name', e.target.value)} placeholder="Иван" />
+            </Field>
+            <Field label="Отчество">
+              <input style={inputStyle} value={form.middle_name} onChange={(e) => setField('middle_name', e.target.value)} placeholder="Иванович" />
+            </Field>
+
+            <div style={sectionLabelStyle}>Роль и подразделение</div>
 
             <Field label="Роль">
               <select style={inputStyle} value={form.role_id} onChange={(e) => setField('role_id', e.target.value)}>
@@ -235,6 +270,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   )
+}
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: '#94a3b8',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  marginBottom: 10,
+  marginTop: 4,
+  borderBottom: '1px solid #e2e8f0',
+  paddingBottom: 4,
 }
 
 const errorBannerStyle: React.CSSProperties = {

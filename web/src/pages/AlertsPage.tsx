@@ -110,8 +110,9 @@ export function AlertsPage() {
       <div style={headerRowStyle}>
         <h1 style={titleStyle}>Панель тревоги</h1>
         <div style={navLinksStyle}>
+          <Link to="/alerts/history" style={navLinkStyle}>История тревог</Link>
           <Link to="/raskhod" style={navLinkStyle}>Расход</Link>
-          <Link to="/raskhod/history" style={navLinkStyle}>История</Link>
+          <Link to="/raskhod/history" style={navLinkStyle}>История расходов</Link>
         </div>
       </div>
 

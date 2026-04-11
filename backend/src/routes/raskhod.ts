@@ -1,6 +1,10 @@
 // Роуты расхода личного состава (только commander)
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import {
+  Document, Packer, Paragraph, Table, TableRow, TableCell,
+  TextRun, AlignmentType, WidthType, BorderStyle,
+} from 'docx';
 
 const router = Router();
 
@@ -116,9 +120,12 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   const unit_id = req.user!.unit_id;
 
   try {
-    // Получаем заголовок расхода
+    // Получаем заголовок расхода с именем подразделения
     const raskhodResult = await pool.query(
-      'SELECT id, raskhod_date, raskhod_time, unit_id, created_by_user_id FROM raskhod WHERE id = $1',
+      `SELECT r.id, r.raskhod_date, r.raskhod_time, r.unit_id, r.created_by_user_id, u.name AS unit_name
+       FROM raskhod r
+       LEFT JOIN units u ON u.id = r.unit_id
+       WHERE r.id = $1`,
       [id]
     );
 
@@ -156,6 +163,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
         raskhod_date: raskhod.raskhod_date,
         raskhod_time: raskhod.raskhod_time,
         unit_id: raskhod.unit_id,
+        unit_name: raskhod.unit_name,
         created_by_user_id: raskhod.created_by_user_id,
         entries: entriesResult.rows,
       },
@@ -163,6 +171,197 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     console.error('Ошибка при получении деталей расхода:', err);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// PUT /api/raskhod/:id — редактирование статусов записей расхода
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const unit_id = req.user!.unit_id;
+  const { entries } = req.body as { entries: Array<{ employee_id: number; status_id: number }> };
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    res.status(400).json({ error: 'Поле entries обязательно' });
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    const raskhodResult = await client.query(
+      'SELECT id, unit_id FROM raskhod WHERE id = $1',
+      [id]
+    );
+    if (raskhodResult.rows.length === 0) {
+      res.status(404).json({ error: 'Расход не найден' });
+      return;
+    }
+    if (raskhodResult.rows[0].unit_id !== unit_id) {
+      res.status(403).json({ error: 'Нет доступа к данному расходу' });
+      return;
+    }
+
+    await client.query('BEGIN');
+    await client.query('DELETE FROM raskhod_entries WHERE raskhod_id = $1', [id]);
+    for (const entry of entries) {
+      await client.query(
+        'INSERT INTO raskhod_entries (raskhod_id, employee_id, status_id) VALUES ($1, $2, $3)',
+        [id, entry.employee_id, entry.status_id]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ data: { updated: entries.length } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Ошибка при редактировании расхода:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/raskhod/:id — удаление расхода
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const unit_id = req.user!.unit_id;
+  const client = await pool.connect();
+
+  try {
+    const raskhodResult = await client.query(
+      'SELECT id, unit_id FROM raskhod WHERE id = $1',
+      [id]
+    );
+
+    if (raskhodResult.rows.length === 0) {
+      res.status(404).json({ error: 'Расход не найден' });
+      return;
+    }
+    if (raskhodResult.rows[0].unit_id !== unit_id) {
+      res.status(403).json({ error: 'Нет доступа к данному расходу' });
+      return;
+    }
+
+    await client.query('BEGIN');
+    await client.query('DELETE FROM raskhod_entries WHERE raskhod_id = $1', [id]);
+    await client.query('DELETE FROM raskhod WHERE id = $1', [id]);
+    await client.query('COMMIT');
+
+    res.status(204).send();
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Ошибка при удалении расхода:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/raskhod/:id/download — скачать расход в формате DOCX
+router.get('/:id/download', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const unit_id = req.user!.unit_id;
+
+  try {
+    const raskhodResult = await pool.query(
+      `SELECT r.id, r.raskhod_date, r.raskhod_time, r.unit_id, u.name AS unit_name
+       FROM raskhod r LEFT JOIN units u ON u.id = r.unit_id
+       WHERE r.id = $1`,
+      [id]
+    );
+    if (raskhodResult.rows.length === 0) {
+      res.status(404).json({ error: 'Расход не найден' });
+      return;
+    }
+    const raskhod = raskhodResult.rows[0];
+    if (raskhod.unit_id !== unit_id) {
+      res.status(403).json({ error: 'Нет доступа к данному расходу' });
+      return;
+    }
+
+    const entriesResult = await pool.query(
+      `SELECT e.last_name, e.first_name, e.middle_name, us.name AS status_name
+       FROM raskhod_entries re
+       JOIN employees e ON e.id = re.employee_id
+       JOIN user_statuses us ON us.id = re.status_id
+       WHERE re.raskhod_id = $1
+       ORDER BY e.last_name, e.first_name`,
+      [id]
+    );
+
+    // Форматируем дату (поддержка string и Date от драйвера pg)
+    const rawDate = raskhod.raskhod_date as string | Date;
+    let dateFormatted = '—';
+    if (rawDate instanceof Date) {
+      const yyyy = rawDate.getUTCFullYear();
+      const mm = String(rawDate.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(rawDate.getUTCDate()).padStart(2, '0');
+      dateFormatted = `${dd}.${mm}.${yyyy}`;
+    } else if (typeof rawDate === 'string') {
+      const [y, m, d] = rawDate.slice(0, 10).split('-');
+      if (y && m && d) dateFormatted = `${d}.${m}.${y}`;
+    }
+
+    const cellBorder = {
+      top: { style: BorderStyle.SINGLE, size: 4, color: '94A3B8' },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: '94A3B8' },
+      left: { style: BorderStyle.SINGLE, size: 4, color: '94A3B8' },
+      right: { style: BorderStyle.SINGLE, size: 4, color: '94A3B8' },
+    };
+
+    const headerRow = new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '№', bold: true, size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder, width: { size: 8, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'ФИО', bold: true, size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder, width: { size: 62, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Статус', bold: true, size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder, width: { size: 30, type: WidthType.PERCENTAGE } }),
+      ],
+    });
+
+    const dataRows = entriesResult.rows.map((entry: { last_name: string; first_name: string; middle_name: string | null; status_name: string }, idx: number) => {
+      const fio = [entry.last_name, entry.first_name, entry.middle_name].filter(Boolean).join(' ');
+      return new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(idx + 1), size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: fio, size: 22 })] })], borders: cellBorder }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: entry.status_name, size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder }),
+        ],
+      });
+    });
+
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: 'РАСХОД ЛИЧНОГО СОСТАВА', bold: true, size: 28 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Подразделение: ${raskhod.unit_name ?? '—'}`, size: 24 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 80 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Дата: ${dateFormatted}    Время: ${raskhod.raskhod_time}`, size: 24 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 240 },
+          }),
+          new Table({ rows: [headerRow, ...dataRows], width: { size: 100, type: WidthType.PERCENTAGE } }),
+          new Paragraph({
+            children: [new TextRun({ text: `Всего сотрудников: ${entriesResult.rows.length}`, size: 22 })],
+            spacing: { before: 240 },
+          }),
+        ],
+      }],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    const filename = `raskhod_${dateFormatted}_${raskhod.raskhod_time.replace(':', '-')}.docx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('Ошибка при генерации DOCX:', err);
+    res.status(500).json({ error: 'Ошибка при генерации файла' });
   }
 });
 

@@ -29,6 +29,46 @@ function getFirebaseApp(): admin.app.App {
   return admin.initializeApp({ credential });
 }
 
+// GET /api/alerts — история тревог подразделения (только commander)
+router.get('/', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
+  const unit_id = req.user!.unit_id;
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const page_size = Math.max(1, parseInt(req.query.page_size as string) || 20);
+  const offset = (page - 1) * page_size;
+
+  if (!unit_id) {
+    res.status(400).json({ error: 'Подразделение пользователя не определено' });
+    return;
+  }
+
+  try {
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM alerts WHERE unit_id = $1', [unit_id]
+    );
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    const result = await pool.query(
+      `SELECT
+         a.id, a.created_at,
+         COUNT(DISTINCT e.id)::int                                        AS total_employees,
+         COUNT(DISTINCT ar.employee_id)::int                              AS responded_count
+       FROM alerts a
+       LEFT JOIN employees e ON e.unit_id = a.unit_id
+       LEFT JOIN alert_responses ar ON ar.alert_id = a.id
+       WHERE a.unit_id = $1
+       GROUP BY a.id
+       ORDER BY a.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [unit_id, page_size, offset]
+    );
+
+    res.json({ data: result.rows, meta: { page, page_size, total } });
+  } catch (err) {
+    console.error('Ошибка при получении истории тревог:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // POST /api/alerts — объявить тревогу (только commander)
 router.post('/', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
   const created_by_user_id = req.user!.id;
@@ -110,7 +150,7 @@ router.get('/:id/responses', requireRole('commander'), async (req: Request, res:
       return;
     }
 
-    // Получаем всех сотрудников подразделения с информацией об отклике
+    // Получаем всех сотрудников подразделения кроме самого командира
     const result = await pool.query(
       `SELECT
          e.id          AS employee_id,
@@ -122,8 +162,9 @@ router.get('/:id/responses', requireRole('commander'), async (req: Request, res:
        LEFT JOIN alert_responses ar
          ON ar.employee_id = e.id AND ar.alert_id = $1
        WHERE e.unit_id = $2
+         AND (e.user_id IS NULL OR e.user_id != $3)
        ORDER BY e.last_name, e.first_name`,
-      [alertId, alert.unit_id]
+      [alertId, alert.unit_id, req.user!.id]
     );
 
     res.json({ data: result.rows });

@@ -155,11 +155,7 @@ export function RaskhodPage() {
                   placeholder="Поиск по ФИО..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    width: '100%',
-                    maxWidth: 400,
-                  }}
+                  style={{ ...inputStyle, width: '100%', maxWidth: 400 }}
                 />
               </div>
 
@@ -178,20 +174,30 @@ export function RaskhodPage() {
                     <tbody>
                       {filteredEmployees.map((emp, idx) => {
                         const entry = entries.find((en) => en.employee_id === emp.id)
+                        const selectedId = entry?.status_id
                         return (
                           <tr key={emp.id} style={idx % 2 === 0 ? rowEvenStyle : rowOddStyle}>
                             <td style={tdCenterStyle}>{idx + 1}</td>
                             <td style={tdStyle}>{fullName(emp)}</td>
-                            <td style={tdStyle}>
-                              <select
-                                value={entry?.status_id ?? ''}
-                                onChange={(ev) => setEntryStatus(emp.id, Number(ev.target.value))}
-                                style={selectStyle}
-                              >
-                                {statuses.map((s) => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
+                            <td style={{ ...tdStyle, paddingTop: 6, paddingBottom: 6 }}>
+                              <div style={statusChipsRow}>
+                                {statuses.map((s) => {
+                                  const active = selectedId === s.id
+                                  const isPresent = s.name.toLowerCase().includes('налицо')
+                                  return (
+                                    <button
+                                      key={s.id}
+                                      type="button"
+                                      onClick={() => setEntryStatus(emp.id, s.id)}
+                                      style={active
+                                        ? (isPresent ? chipActiveGreen : chipActiveRed)
+                                        : chipInactive}
+                                    >
+                                      {s.name}
+                                    </button>
+                                  )
+                                })}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -293,13 +299,42 @@ const tdCenterStyle: React.CSSProperties = {
 const rowEvenStyle: React.CSSProperties = { background: '#fff' }
 const rowOddStyle: React.CSSProperties = { background: '#f8fafc' }
 
-const selectStyle: React.CSSProperties = {
-  padding: '5px 8px',
-  border: '1px solid #cbd5e1',
-  borderRadius: 4,
-  fontSize: 14,
-  background: '#fff',
-  minWidth: 180,
+const statusChipsRow: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+}
+
+const chipBase: React.CSSProperties = {
+  padding: '4px 11px',
+  borderRadius: 20,
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: 'pointer',
+  border: '1.5px solid transparent',
+  transition: 'all 0.15s',
+  whiteSpace: 'nowrap',
+}
+
+const chipInactive: React.CSSProperties = {
+  ...chipBase,
+  background: '#f1f5f9',
+  border: '1.5px solid #cbd5e1',
+  color: '#475569',
+}
+
+const chipActiveGreen: React.CSSProperties = {
+  ...chipBase,
+  background: '#dcfce7',
+  border: '1.5px solid #16a34a',
+  color: '#15803d',
+}
+
+const chipActiveRed: React.CSSProperties = {
+  ...chipBase,
+  background: '#fef2f2',
+  border: '1.5px solid #dc2626',
+  color: '#b91c1c',
 }
 
 const errorBannerStyle: React.CSSProperties = {

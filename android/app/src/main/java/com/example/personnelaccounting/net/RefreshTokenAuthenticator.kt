@@ -1,6 +1,9 @@
 package com.example.personnelaccounting.net
 
+import android.util.Log
 import com.example.personnelaccounting.data.TokenStorage
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
@@ -13,16 +16,28 @@ class RefreshTokenAuthenticator(
 ) : Authenticator {
 
     override fun authenticate(route: Route?, response: Response): Request? {
-        // Avoid infinite loop
         if (responseCount(response) >= 2) return null
 
-        val refresh = tokenStorage.getRefreshToken() ?: return null
+        val refresh = tokenStorage.getRefreshToken()
+        if (refresh.isNullOrBlank()) {
+            Log.w("RefreshAuth", "Нет refresh-токена — нужна повторная авторизация")
+            return null
+        }
 
-        // Refresh endpoint itself should not trigger refresh recursion
         if (response.request.url.encodedPath.endsWith("/api/auth/refresh")) return null
 
-        val newTokens = runCatching { refreshBlocking(refresh) }.getOrNull() ?: return null
+        Log.d("RefreshAuth", "Access-токен истёк, пробуем обновить...")
+        val newTokens = runCatching { refreshBlocking(refresh) }
+            .onFailure { Log.e("RefreshAuth", "Исключение при обновлении токена: ${it.message}", it) }
+            .getOrNull()
 
+        if (newTokens == null) {
+            Log.w("RefreshAuth", "Не удалось обновить токен — очищаем сессию")
+            tokenStorage.clear()
+            return null
+        }
+
+        Log.d("RefreshAuth", "Токен успешно обновлён")
         tokenStorage.setTokens(newTokens.accessToken, newTokens.refreshToken)
 
         return response.request.newBuilder()
@@ -33,19 +48,23 @@ class RefreshTokenAuthenticator(
     private data class Tokens(val accessToken: String, val refreshToken: String)
 
     private fun refreshBlocking(refreshToken: String): Tokens? {
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
         val retrofit = Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:3000/")
-            .addConverterFactory(MoshiConverterFactory.create())
+            .baseUrl(ApiClient.BASE_URL)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
 
         val api = retrofit.create(AuthApi::class.java)
-        val call = api.refresh(RefreshRequest(refreshToken))
-        val res = call.execute()
+        val res = api.refresh(RefreshRequest(refreshToken)).execute()
+        Log.d("RefreshAuth", "Ответ /api/auth/refresh: ${res.code()}")
         if (!res.isSuccessful) return null
         val body = res.body() ?: return null
         val access = body.accessToken ?: return null
-        val refresh = body.refreshToken ?: return null
-        return Tokens(access, refresh)
+        val newRefresh = body.refreshToken ?: return null
+        return Tokens(access, newRefresh)
     }
 
     private fun responseCount(response: Response): Int {

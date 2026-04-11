@@ -166,3 +166,16 @@ export const positions = createReferenceRouter('positions');
 export const ranks = createReferenceRouter('ranks');
 export const units = createReferenceRouter('units');
 export const userStatuses = createReferenceRouter('user_statuses');
+
+// GET /api/roles — список ролей (только чтение, без CRUD)
+import { Router as RolesRouter } from 'express';
+const rolesRouter = RolesRouter();
+rolesRouter.get('/', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name FROM roles ORDER BY id');
+    res.json({ data: result.rows });
+  } catch {
+    res.status(500).json({ error: 'Ошибка при получении ролей' });
+  }
+});
+export const roles = rolesRouter;

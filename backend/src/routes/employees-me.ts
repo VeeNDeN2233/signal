@@ -34,9 +34,10 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// GET /api/employees/unit — список сотрудников подразделения (для commander)
+// GET /api/employees/unit — список подчинённых (без самого командира)
 router.get('/unit', requireRole('commander'), async (req: Request, res: Response): Promise<void> => {
   const unit_id = req.user?.unit_id;
+  const commander_user_id = req.user?.id;
 
   if (!unit_id) {
     res.status(400).json({ error: 'Подразделение пользователя не определено' });
@@ -46,9 +47,11 @@ router.get('/unit', requireRole('commander'), async (req: Request, res: Response
   try {
     const result = await pool.query(
       `SELECT id, last_name, first_name, middle_name
-       FROM employees WHERE unit_id = $1
+       FROM employees
+       WHERE unit_id = $1
+         AND (user_id IS NULL OR user_id != $2)
        ORDER BY last_name, first_name`,
-      [unit_id]
+      [unit_id, commander_user_id]
     );
     res.json({ data: result.rows });
   } catch (err) {

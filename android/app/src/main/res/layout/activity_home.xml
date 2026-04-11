@@ -210,16 +210,6 @@
                     android:layout_marginBottom="12dp" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/simulateAlertButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="Симулировать тревогу"
-                    android:textSize="15sp"
-                    app:backgroundTint="#DC2626"
-                    app:cornerRadius="10dp"
-                    android:layout_marginBottom="10dp" />
-
-                <com.google.android.material.button.MaterialButton
                     android:id="@+id/logoutButton"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"

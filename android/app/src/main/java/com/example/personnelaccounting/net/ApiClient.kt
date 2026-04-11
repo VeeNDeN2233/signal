@@ -9,10 +9,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 object ApiClient {
-    // For Android Emulator to reach host machine localhost:
-    // - backend should run on host (Windows) at :3000
-    // - use 10.0.2.2 inside emulator
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    // Эмулятор Android: 10.0.2.2 (localhost хоста)
+    // Реальный телефон: IP компьютера в локальной сети, например http://192.168.1.XXX:3000/
+    const val BASE_URL = "http://10.0.2.2:3000/"
 
     private fun createHttpClient(tokenStorage: TokenStorage): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }

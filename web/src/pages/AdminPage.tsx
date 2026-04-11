@@ -4,12 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import apiClient from '../lib/apiClient'
 
 const NAV_ITEMS = [
-  { to: '/admin/users', label: 'Пользователи' },
-  { to: '/admin/employees', label: 'Сотрудники' },
+  { to: '/admin/roster', label: 'Личный состав' },
   { to: '/admin/positions', label: 'Должности' },
   { to: '/admin/ranks', label: 'Звания' },
   { to: '/admin/units', label: 'Подразделения' },
   { to: '/admin/user-statuses', label: 'Статусы' },
+  { to: '/admin/audit-log', label: 'Журнал входов' },
 ]
 
 export function AdminPage() {

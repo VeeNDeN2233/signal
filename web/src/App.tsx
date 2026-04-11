@@ -6,9 +6,12 @@ import { AdminPage } from './pages/AdminPage'
 import { RaskhodPage } from './pages/RaskhodPage'
 import { RaskhodHistoryPage } from './pages/RaskhodHistoryPage'
 import { AlertsPage } from './pages/AlertsPage'
+import { AlertsHistoryPage } from './pages/AlertsHistoryPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { UsersPage } from './pages/admin/UsersPage'
 import { EmployeesPage } from './pages/admin/EmployeesPage'
+import { RosterPage } from './pages/admin/RosterPage'
+import { AuditLogPage } from './pages/admin/AuditLogPage'
 import { PositionsPage } from './pages/admin/PositionsPage'
 import { RanksPage } from './pages/admin/RanksPage'
 import { UnitsPage } from './pages/admin/UnitsPage'
@@ -30,9 +33,11 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route index element={<Navigate to="/admin/users" replace />} />
+            <Route index element={<Navigate to="/admin/roster" replace />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="employees" element={<EmployeesPage />} />
+            <Route path="roster" element={<RosterPage />} />
+            <Route path="audit-log" element={<AuditLogPage />} />
             <Route path="positions" element={<PositionsPage />} />
             <Route path="ranks" element={<RanksPage />} />
             <Route path="units" element={<UnitsPage />} />
@@ -61,6 +66,14 @@ export default function App() {
             element={
               <PrivateRoute role="commander">
                 <AlertsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/alerts/history"
+            element={
+              <PrivateRoute role="commander">
+                <AlertsHistoryPage />
               </PrivateRoute>
             }
           />
