@@ -8,6 +8,50 @@ import {
 
 const router = Router();
 
+/** Номер курса из названия подразделения («1 курс», «2 взвод 1 курса»). */
+function courseNumberFromUnitName(unitName: string | null | undefined): string {
+  if (!unitName) return '';
+  const m = unitName.match(/(\d+)\s*курс/i);
+  return m ? m[1] : '';
+}
+
+/** И.О. Фамилия для подписи */
+function formatInitialsLastName(
+  lastName: string,
+  firstName: string,
+  middleName: string | null | undefined
+): string {
+  const f = (firstName || '').trim();
+  const m = (middleName || '').trim();
+  const l = (lastName || '').trim();
+  const i1 = f ? `${f.charAt(0).toLocaleUpperCase('ru-RU')}.` : '';
+  const i2 = m ? `${m.charAt(0).toLocaleUpperCase('ru-RU')}.` : '';
+  return `${i1}${i2} ${l}`.trim();
+}
+
+/** Порядок вывода статусов в итоге (остальные — по алфавиту после них). */
+const DOCX_STATUS_ORDER = [
+  'налицо',
+  'болен',
+  'наряд',
+  'командировка',
+  'отпуск',
+  'незаконно отсутствует',
+] as const;
+
+function docxStatusSortKey(statusName: string): number {
+  const lower = statusName.trim().toLowerCase();
+  const idx = DOCX_STATUS_ORDER.findIndex((s) => lower === s);
+  return idx >= 0 ? idx : 100;
+}
+
+const borderNone = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+};
+
 // POST /api/raskhod — создание расхода
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   const { raskhod_date, raskhod_time, entries } = req.body;
@@ -287,6 +331,28 @@ router.get('/:id/download', async (req: Request, res: Response): Promise<void> =
       [id]
     );
 
+    type EntryRow = {
+      last_name: string;
+      first_name: string;
+      middle_name: string | null;
+      status_name: string;
+    };
+    const entryRows = entriesResult.rows as EntryRow[];
+
+    const chiefResult = await pool.query(
+      `SELECT e.last_name, e.first_name, e.middle_name, rk.name AS rank_name
+       FROM employees e
+       JOIN positions p ON p.id = e.position_id
+       LEFT JOIN ranks rk ON rk.id = e.rank_id
+       WHERE e.unit_id = $1
+         AND (p.name ILIKE '%начальник%курс%' OR p.name = 'Начальник курса')
+       LIMIT 1`,
+      [raskhod.unit_id]
+    );
+    const chief = chiefResult.rows[0] as
+      | { last_name: string; first_name: string; middle_name: string | null; rank_name: string | null }
+      | undefined;
+
     // Форматируем дату (поддержка string и Date от драйвера pg)
     const rawDate = raskhod.raskhod_date as string | Date;
     let dateFormatted = '—';
@@ -315,7 +381,7 @@ router.get('/:id/download', async (req: Request, res: Response): Promise<void> =
       ],
     });
 
-    const dataRows = entriesResult.rows.map((entry: { last_name: string; first_name: string; middle_name: string | null; status_name: string }, idx: number) => {
+    const dataRows = entryRows.map((entry, idx: number) => {
       const fio = [entry.last_name, entry.first_name, entry.middle_name].filter(Boolean).join(' ');
       return new TableRow({
         children: [
@@ -324,6 +390,113 @@ router.get('/:id/download', async (req: Request, res: Response): Promise<void> =
           new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: entry.status_name, size: 22 })], alignment: AlignmentType.CENTER })], borders: cellBorder }),
         ],
       });
+    });
+
+    const byStatus = new Map<string, number>();
+    for (const row of entryRows) {
+      const name = row.status_name.trim();
+      byStatus.set(name, (byStatus.get(name) ?? 0) + 1);
+    }
+    const totalListed = entryRows.length;
+    const statusKeysSorted = [...byStatus.keys()].sort((a, b) => {
+      const d = docxStatusSortKey(a) - docxStatusSortKey(b);
+      return d !== 0 ? d : a.localeCompare(b, 'ru');
+    });
+
+    const summaryParagraphs = [
+      new Paragraph({
+        children: [new TextRun({ text: 'Итого по подразделению', bold: true, size: 22 })],
+        spacing: { before: 280, after: 120 },
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: `Всего по списку: ${totalListed}`, size: 22 })],
+        spacing: { after: 100 },
+      }),
+      ...statusKeysSorted.map(
+        (statusName) =>
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `${statusName}: ${byStatus.get(statusName) ?? 0}`,
+                size: 22,
+              }),
+            ],
+            spacing: { after: 60 },
+          })
+      ),
+    ];
+
+    const courseNum = courseNumberFromUnitName(raskhod.unit_name as string | null);
+    const chiefTitleLeft = courseNum
+      ? `Начальник ${courseNum} курса`
+      : `Начальник курса${raskhod.unit_name ? ` (${String(raskhod.unit_name)})` : ''}`;
+    const rankText = chief?.rank_name?.trim() ? chief.rank_name : '—';
+    const initialsText = chief
+      ? formatInitialsLastName(chief.last_name, chief.first_name, chief.middle_name)
+      : '—';
+
+    const signatureTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 62, type: WidthType.PERCENTAGE },
+              borders: borderNone,
+              children: [
+                new Paragraph({
+                  spacing: { before: 200 },
+                  children: [new TextRun({ text: chiefTitleLeft, size: 22 })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 38, type: WidthType.PERCENTAGE },
+              borders: borderNone,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: [new TextRun({ text: '\u00A0', size: 22 })],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: borderNone,
+              children: [new Paragraph({ children: [new TextRun({ text: rankText, size: 22 })] })],
+            }),
+            new TableCell({
+              borders: borderNone,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: [new TextRun({ text: initialsText, size: 22 })],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: borderNone,
+              children: [new Paragraph({ children: [new TextRun({ text: dateFormatted, size: 22 })] })],
+            }),
+            new TableCell({
+              borders: borderNone,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: [new TextRun({ text: '\u00A0', size: 22 })],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
     });
 
     const doc = new Document({
@@ -345,10 +518,8 @@ router.get('/:id/download', async (req: Request, res: Response): Promise<void> =
             spacing: { after: 240 },
           }),
           new Table({ rows: [headerRow, ...dataRows], width: { size: 100, type: WidthType.PERCENTAGE } }),
-          new Paragraph({
-            children: [new TextRun({ text: `Всего сотрудников: ${entriesResult.rows.length}`, size: 22 })],
-            spacing: { before: 240 },
-          }),
+          ...summaryParagraphs,
+          signatureTable,
         ],
       }],
     });

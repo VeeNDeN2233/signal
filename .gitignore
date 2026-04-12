@@ -3,3 +3,11 @@
 *.log
 .DS_Store
 node_modules/
+
+# Сборки (не коммитить)
+web/dist/
+backend/dist/
+
+# Локальные настройки редактора и служебные каталоги инструментов
+.vscode/
+.kiro/

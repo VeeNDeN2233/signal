@@ -20,7 +20,8 @@
 | [web/](web/) | React (Vite), SPA; в продакшен-сборке запросы к API идут на тот же хост по пути `/api` |
 | [android/](android/) | Нативный клиент (настройка и сборка — в своём README) |
 | [docker-compose.yml](docker-compose.yml) | PostgreSQL, одноразовый контейнер миграций, API, nginx с фронтом |
-| [env.example](env.example) | Шаблон переменных для Docker и для ручного копирования в `.env` |
+| [env.example](env.example) | Шаблон для **корневого** `.env` (Docker Compose, `npm run dev` из корня) |
+| [backend/.env.example](backend/.env.example) | Шаблон для **`backend/.env`** при запуске только из каталога `backend/` (те же `DB_*`/`JWT_*`, плюс `DB_HOST=localhost`) |
 | [scripts/bootstrap-env.js](scripts/bootstrap-env.js) | Создаёт корневой `.env` с случайными JWT, если файла ещё нет |
 | [package.json](package.json) в корне | Скрипты `bootstrap:env`, `install:all`, `dev` (параллельно backend + web) |
 
@@ -151,7 +152,7 @@ node scripts/seed_populate.js
 
 **Важно про `.env`:** `dotenv` в backend подгружает файл **из текущего рабочего каталога процесса Node**, а не автоматически из папки `backend/`.
 
-- Запуск **`cd backend && npm run dev`** → кладите **`backend/.env`**.
+- Запуск **`cd backend && npm run dev`** → кладите **`backend/.env`** (шаблон — [backend/.env.example](backend/.env.example); значения `DB_*` и `JWT_*` согласованы с [env.example](env.example)).
 - Запуск **`npm run dev` из корня** через [корневой `package.json`](package.json) (`--prefix backend`) → обычно рабочий каталог — **корень репозитория**, читается **корневой** `.env` (удобно, если тот же файл используется для Docker).
 
 Из корня один раз поставить зависимости backend и web и гонять оба процесса:
@@ -227,4 +228,4 @@ npm run test:e2e
 4. Браузер: `http://localhost:8080` → `admin` / `admin`
 5. По желанию: `docker compose exec api node scripts/seed_populate.js` и вход под логином руководителя из вывода скрипта
 
-Отдельного файла LICENSE в репозитории нет — условия распространения при необходимости добавьте сами.
+Условия использования см. [LICENSE](LICENSE).
