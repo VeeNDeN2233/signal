@@ -104,9 +104,9 @@ export function RaskhodPage() {
   })
 
   return (
-    <div style={pageStyle}>
+    <>
       <CommanderNav title="Расход" />
-
+      <div style={pageStyle}>
       {loadError && <div style={errorBannerStyle}>{loadError}</div>}
 
       {loading ? (
@@ -224,7 +224,8 @@ export function RaskhodPage() {
           </div>
         </form>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

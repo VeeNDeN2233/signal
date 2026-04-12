@@ -107,9 +107,9 @@ export function AlertsPage() {
   const notRespondedCount = responses.filter(r => r.responded_at === null).length
 
   return (
-    <div style={pageStyle}>
+    <>
       <CommanderNav title="Тревога" />
-
+      <div style={pageStyle}>
       {error && <div style={errorBannerStyle}>{error}</div>}
 
       {alertId === null ? (
@@ -186,7 +186,8 @@ export function AlertsPage() {
           </p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

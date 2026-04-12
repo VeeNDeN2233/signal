@@ -243,10 +243,9 @@ export function RaskhodHistoryPage() {
   }
 
   return (
-    <div style={pageStyle}>
-      {/* Шапка */}
+    <>
       <CommanderNav title="История расходов" />
-
+      <div style={pageStyle}>
       {/* Фильтры */}
       <div style={filtersRowStyle}>
         <div style={filterGroupStyle}>
@@ -457,7 +456,8 @@ export function RaskhodHistoryPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -478,7 +478,6 @@ function summaryChipStyle(name: string): React.CSSProperties {
 
 const pageStyle: React.CSSProperties = {
   ...commanderPageBody,
-  maxWidth: 1100,
 }
 const filtersRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap',

@@ -1,6 +1,7 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { COMMANDER_SHELL_MAX } from '../layout/commanderLayout'
 
 interface CommanderNavProps {
   title: string
@@ -75,23 +76,28 @@ const headerOuter: React.CSSProperties = {
 }
 
 const headerInner: React.CSSProperties = {
-  maxWidth: 1120,
+  maxWidth: COMMANDER_SHELL_MAX,
   margin: '0 auto',
   padding: '12px 20px',
   display: 'flex',
   alignItems: 'center',
   gap: 16,
-  minHeight: 64,
+  height: 72,
+  minHeight: 72,
+  maxHeight: 72,
   boxSizing: 'border-box',
 }
 
+/** Фиксированная ширина: иначе при смене длины заголовка вкладки пересчитывается flex и «плывёт» сетка навигации */
 const brandBlock: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 12,
-  flexShrink: 0,
+  flex: '0 0 260px',
+  width: 260,
+  minWidth: 260,
   maxWidth: 260,
-  minWidth: 0,
+  minHeight: 0,
 }
 
 const brandMark: React.CSSProperties = {
@@ -146,6 +152,7 @@ const navBlock: React.CSSProperties = {
   gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: 8,
   alignItems: 'stretch',
+  height: 44,
 }
 
 function tabStyle(isActive: boolean): React.CSSProperties {
@@ -158,17 +165,20 @@ function tabStyle(isActive: boolean): React.CSSProperties {
     fontSize: 13,
     fontWeight: 600,
     lineHeight: 1.25,
-    padding: '10px 8px',
+    padding: '0 8px',
     borderRadius: 8,
+    height: 44,
     minHeight: 44,
+    maxHeight: 44,
     boxSizing: 'border-box',
     border: isActive ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
     color: isActive ? '#ffffff' : '#475569',
     background: isActive ? '#1d4ed8' : '#f8fafc',
     transition: 'background 0.15s, color 0.15s, border-color 0.15s',
     minWidth: 0,
-    wordBreak: 'break-word',
-    hyphens: 'auto',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   }
 }
 
@@ -193,13 +203,15 @@ const sessionStripOuter: React.CSSProperties = {
 }
 
 const sessionStripInner: React.CSSProperties = {
-  maxWidth: 1120,
+  maxWidth: COMMANDER_SHELL_MAX,
   margin: '0 auto',
   padding: '10px 20px',
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'flex-start',
   gap: '12px 28px',
+  minHeight: 54,
+  boxSizing: 'border-box',
 }
 
 const sessionFieldStyle: React.CSSProperties = {

@@ -109,9 +109,9 @@ export function AlertsHistoryPage() {
   const totalCount = detail?.length ?? 0
 
   return (
-    <div style={pageStyle}>
+    <>
       <CommanderNav title="История тревог" />
-
+      <div style={pageStyle}>
       <div style={filtersRowStyle}>
         <input
           type="text"
@@ -214,13 +214,14 @@ export function AlertsHistoryPage() {
       <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
         Загружено записей: {records.length} из {meta.total}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const pageStyle: React.CSSProperties = { ...commanderPageBody, maxWidth: 1100 }
+const pageStyle: React.CSSProperties = { ...commanderPageBody }
 const errorBannerStyle: React.CSSProperties = { background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 4, padding: '8px 12px', marginBottom: 12, fontSize: 14 }
 
 const filtersRowStyle: React.CSSProperties = {
