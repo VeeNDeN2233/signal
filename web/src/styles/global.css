@@ -41,6 +41,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+a:focus:not(:focus-visible),
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* Узкий экран: бренд + выход в одну строку, вкладки сеткой 2×2 на всю ширину */
 @media (max-width: 820px) {
   .commander-header-inner {

@@ -2,9 +2,11 @@ import React from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import apiClient from '../lib/apiClient'
+import { tokenStorage } from '../lib/tokenStorage'
 
 const NAV_ITEMS = [
   { to: '/admin/roster', label: 'Личный состав' },
+  { to: '/admin/employees', label: 'Карточки сотрудников' },
   { to: '/admin/users', label: 'Учётные записи' },
   { to: '/admin/positions', label: 'Должности' },
   { to: '/admin/ranks', label: 'Звания' },
@@ -18,10 +20,13 @@ export function AdminPage() {
   const navigate = useNavigate()
 
   async function handleLogout() {
-    try {
-      await apiClient.post('/auth/logout')
-    } catch {
-      // ignore
+    const refreshToken = tokenStorage.getRefresh()
+    if (refreshToken) {
+      try {
+        await apiClient.post('/auth/logout', { refreshToken })
+      } catch {
+        // сеть / истёкший токен — всё равно очищаем сеанс локально
+      }
     }
     logout()
     navigate('/login', { replace: true })
@@ -98,6 +103,7 @@ function navLinkStyle(isActive: boolean): React.CSSProperties {
 
 const mainStyle: React.CSSProperties = {
   flex: 1,
+  minWidth: 0,
   padding: 28,
   background: '#f8fafc',
   overflowY: 'auto',

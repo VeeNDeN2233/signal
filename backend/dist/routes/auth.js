@@ -8,6 +8,7 @@ const express_1 = require("express");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("../db");
+const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 // ─── Вспомогательные функции ────────────────────────────────────────────────
 /** Генерирует JWT access-токен */
@@ -43,8 +44,9 @@ router.post('/login', async (req, res) => {
         return;
     }
     try {
-        // Ищем пользователя с JOIN на roles и employees (для unit_id)
-        const userResult = await db_1.pool.query(`SELECT u.id, u.password_hash, r.name AS role, e.unit_id
+        // Ищем пользователя, unit_id берём из employees (приоритет) или из users.unit_id
+        const userResult = await db_1.pool.query(`SELECT u.id, u.password_hash, r.name AS role,
+              COALESCE(e.unit_id, u.unit_id) AS unit_id
        FROM users u
        JOIN roles r ON r.id = u.role_id
        LEFT JOIN employees e ON e.user_id = u.id
@@ -71,7 +73,7 @@ router.post('/login', async (req, res) => {
         // Записываем время входа в audit_log
         await db_1.pool.query(`INSERT INTO audit_log (user_id, date_time_in)
        VALUES ($1, NOW())`, [user.id]);
-        res.json({ accessToken, refreshToken });
+        res.json({ data: { accessToken, refreshToken, role: user.role } });
     }
     catch (err) {
         console.error('Ошибка при входе:', err);
@@ -92,7 +94,8 @@ router.post('/refresh', async (req, res) => {
     }
     try {
         // Проверяем наличие токена в БД
-        const tokenResult = await db_1.pool.query(`SELECT rt.id, rt.user_id, rt.expires_at, u.role_id, r.name AS role, e.unit_id
+        const tokenResult = await db_1.pool.query(`SELECT rt.id, rt.user_id, rt.expires_at, u.role_id, r.name AS role,
+              COALESCE(e.unit_id, u.unit_id) AS unit_id
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        JOIN roles r ON r.id = u.role_id
@@ -170,6 +173,46 @@ router.post('/logout', async (req, res) => {
     }
     catch (err) {
         console.error('Ошибка при выходе:', err);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    }
+});
+// ─── GET /api/auth/me — текущий пользователь (по access-токену) ─────────────
+router.get('/me', auth_1.authenticate, async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        res.status(401).json({ error: 'Не аутентифицирован' });
+        return;
+    }
+    try {
+        const result = await db_1.pool.query(`SELECT u.login, r.name AS role,
+              un.name AS unit_name,
+              e.last_name, e.first_name, e.middle_name,
+              p.name AS position_name
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       LEFT JOIN employees e ON e.user_id = u.id
+       LEFT JOIN units un ON un.id = COALESCE(e.unit_id, u.unit_id)
+       LEFT JOIN positions p ON p.id = e.position_id
+       WHERE u.id = $1`, [userId]);
+        if (result.rows.length === 0) {
+            res.status(404).json({ error: 'Пользователь не найден' });
+            return;
+        }
+        const row = result.rows[0];
+        const fioParts = [row.last_name, row.first_name, row.middle_name].filter(Boolean);
+        const fio = fioParts.length > 0 ? fioParts.join(' ') : null;
+        res.json({
+            data: {
+                login: row.login,
+                role: row.role,
+                unit_name: row.unit_name,
+                position_name: row.position_name,
+                fio,
+            },
+        });
+    }
+    catch (err) {
+        console.error('Ошибка при получении профиля:', err);
         res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 });

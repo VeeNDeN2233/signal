@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "migrate": "node -e \"require('./dist/db').runMigrations()\"",
+    "migrate": "node -e \"require('./dist/db').runMigrations().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)})\"",
     "test": "jest --runInBand"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import apiClient from '../../lib/apiClient'
 
 interface EventEntry {
@@ -48,21 +48,42 @@ export function AuditLogPage() {
   const [meta, setMeta] = useState<Meta>({ page: 1, page_size: 50, total: 0 })
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<FilterType>('all')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const skipSearchPageReset = useRef(true)
 
-  const fetchPage = useCallback((p: number, f: FilterType) => {
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchDebounced(searchInput.trim()), 320)
+    return () => window.clearTimeout(t)
+  }, [searchInput])
+
+  useEffect(() => {
+    if (skipSearchPageReset.current) {
+      skipSearchPageReset.current = false
+      return
+    }
+    setPage(1)
+  }, [searchDebounced])
+
+  const fetchPage = useCallback((p: number, f: FilterType, q: string) => {
     setLoading(true)
     setError(null)
     apiClient.get<{ data: EventEntry[]; meta: Meta }>('/audit-log', {
-      params: { page: p, page_size: 50, filter: f },
+      params: {
+        page: p,
+        page_size: 50,
+        filter: f,
+        ...(q ? { q } : {}),
+      },
     })
       .then((r) => { setEntries(r.data.data); setMeta(r.data.meta) })
       .catch(() => setError('Ошибка загрузки журнала'))
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { fetchPage(page, filter) }, [fetchPage, page, filter])
+  useEffect(() => { fetchPage(page, filter, searchDebounced) }, [fetchPage, page, filter, searchDebounced])
 
   function handleFilterChange(f: FilterType) {
     setFilter(f)
@@ -80,6 +101,7 @@ export function AuditLogPage() {
           {FILTER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
+              type="button"
               onClick={() => handleFilterChange(opt.value)}
               style={filter === opt.value ? filterBtnActiveStyle : filterBtnStyle}
             >
@@ -87,6 +109,14 @@ export function AuditLogPage() {
             </button>
           ))}
         </div>
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Поиск: логин, подразделение, тип…"
+          style={searchInputStyle}
+          aria-label="Поиск по журналу"
+        />
         <span style={totalLabelStyle}>
           Записей: {meta.total}
         </span>
@@ -138,6 +168,7 @@ export function AuditLogPage() {
           {totalPages > 1 && (
             <div style={paginationStyle}>
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 style={page === 1 ? disabledBtnStyle : pageBtnStyle}
@@ -146,6 +177,7 @@ export function AuditLogPage() {
               </button>
               <span style={{ fontSize: 14, color: '#374151' }}>Стр. {page} / {totalPages}</span>
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 style={page === totalPages ? disabledBtnStyle : pageBtnStyle}
@@ -202,8 +234,19 @@ function roleBadgeStyle(role: string): React.CSSProperties {
 const titleStyle: React.CSSProperties = { marginTop: 0, marginBottom: 12, fontSize: 20, color: '#1e293b' }
 
 const toolbarStyle: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
   marginBottom: 16, flexWrap: 'wrap', gap: 12,
+}
+
+const searchInputStyle: React.CSSProperties = {
+  flex: '1 1 200px',
+  minWidth: 160,
+  maxWidth: 360,
+  padding: '7px 12px',
+  border: '1px solid #cbd5e1',
+  borderRadius: 6,
+  fontSize: 14,
+  boxSizing: 'border-box',
 }
 
 const filterGroupStyle: React.CSSProperties = {

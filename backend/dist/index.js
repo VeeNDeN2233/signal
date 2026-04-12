@@ -40,6 +40,14 @@ const express_1 = __importDefault(require("express"));
 const dotenv = __importStar(require("dotenv"));
 const db_1 = require("./db");
 const auth_1 = __importDefault(require("./routes/auth"));
+const users_1 = __importDefault(require("./routes/admin/users"));
+const employees_1 = __importDefault(require("./routes/admin/employees"));
+const referencesRouter = __importStar(require("./routes/admin/references"));
+const auth_2 = require("./middleware/auth");
+const auditLog_1 = __importDefault(require("./routes/admin/auditLog"));
+const raskhod_1 = __importDefault(require("./routes/raskhod"));
+const alerts_1 = __importDefault(require("./routes/alerts"));
+const employees_me_1 = __importDefault(require("./routes/employees-me"));
 // Загружаем переменные окружения
 dotenv.config();
 const app = (0, express_1.default)();
@@ -52,6 +60,21 @@ app.get('/health', (_req, res) => {
 });
 // Маршруты аутентификации
 app.use('/api/auth', auth_1.default);
+// Маршруты сотрудников (для user и commander) — должны быть до admin /api/employees
+app.use('/api/employees', auth_2.authenticate, employees_me_1.default);
+// Административные маршруты (только admin)
+app.use('/api/users', auth_2.authenticate, (0, auth_2.requireRole)('admin'), users_1.default);
+app.use('/api/employees', auth_2.authenticate, (0, auth_2.requireRole)('admin'), employees_1.default);
+app.use('/api/positions', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.positions);
+app.use('/api/ranks', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.ranks);
+app.use('/api/units', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.units);
+app.use('/api/user-statuses', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.userStatuses);
+app.use('/api/roles', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.roles);
+app.use('/api/audit-log', auth_2.authenticate, (0, auth_2.requireRole)('admin'), auditLog_1.default);
+// Маршруты расхода личного состава (только commander)
+app.use('/api/raskhod', auth_2.authenticate, (0, auth_2.requireRole)('commander'), raskhod_1.default);
+// Маршруты тревоги (роли проверяются на уровне каждого маршрута)
+app.use('/api/alerts', auth_2.authenticate, alerts_1.default);
 // Запуск сервера
 async function start() {
     try {
