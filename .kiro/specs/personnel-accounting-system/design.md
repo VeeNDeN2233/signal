@@ -6,12 +6,12 @@
 
 1. **Расход личного состава** — руководитель дважды в сутки (09:00 / 21:00) фиксирует статус каждого сотрудника подразделения.
 2. **Тревога** — руководитель одним нажатием рассылает push-уведомление всем сотрудникам; система отслеживает подтверждения в реальном времени.
-3. **Администрирование** — администратор управляет справочниками (должности, звания, подразделения) и учётными записями.
+3. **Администрирование** — администратор управляет личным составом (сотрудники + учётные записи), справочниками (должности, звания, подразделения, статусы) и просматривает журнал входов.
 
 Система состоит из трёх компонентов:
-- **Backend** — REST API (Node.js / Express или аналог), PostgreSQL, интеграция с Firebase Cloud Messaging.
-- **Web App** — SPA (React) для ролей «admin» и «commander».
-- **Android App** — нативное Android-приложение для роли «employee».
+- **Backend** — REST API на Node.js / Express / TypeScript, PostgreSQL, интеграция с Firebase Cloud Messaging (FCM HTTP v1 API).
+- **Web App** — SPA на React + TypeScript (сборка Vite) для ролей «admin» и «commander».
+- **Android App** — нативное Android-приложение на Kotlin для роли «employee» (Retrofit, OkHttp, Firebase Messaging, Room, WorkManager).
 
 ---
 
@@ -19,25 +19,27 @@
 
 ```mermaid
 graph TD
-    WebApp["Web App (React SPA)"]
+    WebApp["Web App (React SPA, Vite)"]
     AndroidApp["Android App (Kotlin)"]
-    Backend["Backend (REST API)"]
+    Backend["Backend (Node.js/Express/TS)"]
     DB["PostgreSQL"]
     FCM["Firebase Cloud Messaging"]
 
     WebApp -- "HTTPS / REST + JWT" --> Backend
     AndroidApp -- "HTTPS / REST + JWT" --> Backend
-    Backend -- "SQL" --> DB
-    Backend -- "FCM HTTP v1 API" --> FCM
+    Backend -- "SQL (pg)" --> DB
+    Backend -- "FCM HTTP v1 API (firebase-admin)" --> FCM
     FCM -- "Push notification" --> AndroidApp
 ```
 
 ### Ключевые архитектурные решения
 
-- **Stateless JWT-аутентификация**: access-токен (короткоживущий, ~15 мин) + refresh-токен (долгоживущий, ~7 дней). Refresh-токены хранятся в БД для возможности отзыва.
-- **Обновление статусов тревоги**: Web App опрашивает Backend каждые 10 секунд (polling) или использует WebSocket — выбор определяется на этапе реализации. Polling проще в развёртывании; WebSocket снижает задержку.
+- **Stateless JWT-аутентификация**: access-токен (~15 мин) + refresh-токен (~7 дней). Refresh-токены хранятся в таблице `refresh_tokens` для возможности отзыва (rotation — старый удаляется при выдаче нового).
+- **Определение unit_id**: `COALESCE(employees.unit_id, users.unit_id)` — позволяет командиру работать даже без записи в `employees`.
+- **Обновление статусов тревоги**: Web App опрашивает Backend каждые 10 секунд (polling). Идентификатор активной тревоги сохраняется в `localStorage` для устойчивости к перезагрузке страницы.
 - **FCM-токены**: Android App регистрирует FCM-токен при каждом входе; токен хранится в таблице `employees` (поле `fcm_token`).
-- **Offline-подтверждение тревоги**: Android App сохраняет ответ в локальной SQLite/Room БД и отправляет при восстановлении сети.
+- **Offline-подтверждение тревоги**: Android App сохраняет ответ в Room БД и отправляет при восстановлении сети через WorkManager.
+- **Генерация документов**: Сервер генерирует DOCX-файлы расхода через библиотеку `docx`.
 
 ---
 
@@ -49,24 +51,35 @@ graph TD
 
 | Метод | Путь | Роль | Описание |
 |-------|------|------|----------|
-| POST | `/api/auth/login` | any | Вход, возврат JWT пары |
-| POST | `/api/auth/refresh` | any | Обновление токенов |
-| POST | `/api/auth/logout` | any | Выход, фиксация `date_time_out` |
+| POST | `/api/auth/login` | any | Вход: JWT пара + запись в `audit_log` |
+| POST | `/api/auth/refresh` | any | Обновление токенов (rotation) |
+| POST | `/api/auth/logout` | any | Выход: фиксация `date_time_out`, удаление refresh-токена |
 
-#### Справочники (Admin)
+#### Личный состав и справочники (Admin)
 
 | Метод | Путь | Роль | Описание |
 |-------|------|------|----------|
 | GET/POST | `/api/users` | admin | Список / создание пользователей |
-| GET/PUT/DELETE | `/api/users/:id` | admin | Чтение / обновление / удаление |
-| GET/POST | `/api/employees` | admin | Список / создание сотрудников |
-| GET/PUT/DELETE | `/api/employees/:id` | admin | Чтение / обновление / удаление |
+| GET/PUT/DELETE | `/api/users/:id` | admin | Чтение / обновление / удаление пользователя |
+| GET/POST | `/api/employees` | admin | Список (`?unit_id=X`) / создание сотрудников |
+| GET/PUT/DELETE | `/api/employees/:id` | admin | Чтение / обновление / удаление сотрудника |
 | GET/POST/PUT/DELETE | `/api/positions` | admin | CRUD должностей |
 | GET/POST/PUT/DELETE | `/api/ranks` | admin | CRUD званий |
 | GET/POST/PUT/DELETE | `/api/units` | admin | CRUD подразделений |
 | GET/POST/PUT/DELETE | `/api/user-statuses` | admin | CRUD статусов |
+| GET | `/api/roles` | admin | Список ролей (только чтение) |
+| GET | `/api/audit-log` | admin | Журнал входов/выходов |
 
 Все списочные эндпоинты поддерживают параметры `?page=1&page_size=20`.
+
+#### Профиль и данные подразделения (Employee / Commander)
+
+| Метод | Путь | Роль | Описание |
+|-------|------|------|----------|
+| GET | `/api/employees/me` | any auth | Профиль текущего сотрудника (ФИО, звание, должность, подразделение) |
+| GET | `/api/employees/unit` | commander | Список сотрудников подразделения командира |
+| GET | `/api/employees/statuses` | commander | Список статусов для формы расхода |
+| PUT | `/api/employees/me/fcm-token` | user | Обновить FCM-токен |
 
 #### Расход (Commander)
 
@@ -75,37 +88,58 @@ graph TD
 | GET | `/api/raskhod` | commander | История расходов подразделения |
 | POST | `/api/raskhod` | commander | Создание расхода |
 | GET | `/api/raskhod/:id` | commander | Детали расхода |
+| PUT | `/api/raskhod/:id` | commander | Редактирование записей расхода |
+| DELETE | `/api/raskhod/:id` | commander | Удаление расхода |
+| GET | `/api/raskhod/:id/download` | commander | Скачивание расхода в формате DOCX |
 
 #### Тревога (Commander / Employee)
 
 | Метод | Путь | Роль | Описание |
 |-------|------|------|----------|
-| POST | `/api/alerts` | commander | Объявить тревогу |
-| GET | `/api/alerts/:id/responses` | commander | Список откликов |
-| POST | `/api/alerts/:id/respond` | user | Подтвердить получение |
+| GET | `/api/alerts` | commander | История тревог подразделения (с пагинацией) |
+| POST | `/api/alerts` | commander | Объявить тревогу (+ отправка FCM) |
+| GET | `/api/alerts/:id/responses` | commander | Список откликов на тревогу |
+| POST | `/api/alerts/:id/respond` | user | Подтвердить получение сигнала |
 
-#### FCM-токен (Employee)
+#### Служебные
 
 | Метод | Путь | Роль | Описание |
 |-------|------|------|----------|
-| PUT | `/api/employees/me/fcm-token` | user | Обновить FCM-токен |
+| GET | `/health` | any | Проверка работоспособности сервера |
 
 ### Web App (React SPA)
 
 Маршруты:
 - `/login` — страница входа
-- `/admin/*` — административная панель (только admin)
+- `/admin` — административная панель (только admin), редирект на `/admin/roster`
+  - `/admin/roster` — Личный состав (единая страница: выбор подразделения → сотрудники)
+  - `/admin/users` — Учётные записи (прямое управление аккаунтами, включая создание admin)
+  - `/admin/employees` — Сотрудники (legacy-страница)
+  - `/admin/positions` — Должности
+  - `/admin/ranks` — Звания
+  - `/admin/units` — Подразделения
+  - `/admin/user-statuses` — Статусы
+  - `/admin/audit-log` — Журнал входов
 - `/raskhod` — форма расхода (только commander)
-- `/raskhod/history` — история расходов
+- `/raskhod/history` — история расходов (двухколоночный интерфейс с поиском, фильтрами, редактированием, скачиванием DOCX и удалением)
 - `/alerts` — панель тревоги (только commander)
+- `/alerts/history` — история тревог (двухпанельный интерфейс с поиском и фильтрами)
+
+Компоненты навигации:
+- `CommanderNav` — единая навигационная панель для всех страниц командира (Тревога, История тревог, Расход, История расходов, Выход)
+- `AdminPage` sidebar — боковое меню для всех страниц администратора
 
 ### Android App
 
 Компоненты:
 - `LoginActivity` — вход, регистрация FCM-токена
-- `FCMService` (extends `FirebaseMessagingService`) — приём push, воспроизведение звука, показ уведомления
-- `AlertNotificationActivity` — кнопка «Принял»
-- `OfflineQueue` (Room + WorkManager) — очередь отложенных ответов
+- `HomeActivity` — главный экран: профиль сотрудника (ФИО, звание, должность, подразделение), кнопка выхода
+- `MyFirebaseMessagingService` (extends `FirebaseMessagingService`) — приём push, запуск `AlarmPlayerService`
+- `AlarmPlayerService` — foreground service, воспроизведение системного alarm tone
+- `AlertActivity` — полноэкранная активность тревоги с кнопкой «Принял»
+- `AlertResponseQueue` / `AlertSyncWorker` (Room + WorkManager) — очередь отложенных ответов при offline
+- `MainApplication` — инициализация Room БД
+- `RefreshTokenAuthenticator` / `AuthHeaderInterceptor` (OkHttp) — автоматическое обновление JWT
 
 ---
 
@@ -122,17 +156,17 @@ CREATE TABLE roles (
 
 -- Пользователи
 CREATE TABLE users (
-    id            SERIAL PRIMARY KEY,
-    login         VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role_id       INTEGER NOT NULL REFERENCES roles(id)
+    id             SERIAL PRIMARY KEY,
+    login          VARCHAR(100) NOT NULL UNIQUE,
+    password_hash  VARCHAR(255) NOT NULL,
+    role_id        INTEGER NOT NULL REFERENCES roles(id),
+    unit_id        INTEGER REFERENCES units(id)
 );
 
 -- Статусы присутствия
 CREATE TABLE user_statuses (
     id   SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE
-    -- 'налицо', 'болен', 'наряд', 'командировка', 'отпуск', 'незаконно отсутствует'
 );
 
 -- Справочники
@@ -154,7 +188,7 @@ CREATE TABLE units (
 -- Сотрудники
 CREATE TABLE employees (
     id           SERIAL PRIMARY KEY,
-    user_id      INTEGER REFERENCES users(id),
+    user_id      INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL,
     last_name    VARCHAR(100) NOT NULL,
     first_name   VARCHAR(100) NOT NULL,
     middle_name  VARCHAR(100),
@@ -163,7 +197,7 @@ CREATE TABLE employees (
     birth_date   DATE,
     unit_id      INTEGER NOT NULL REFERENCES units(id),
     phone_number VARCHAR(20),
-    fcm_token    VARCHAR(255)  -- FCM registration token
+    fcm_token    VARCHAR(255)
 );
 
 -- Журнал аудита
@@ -174,10 +208,19 @@ CREATE TABLE audit_log (
     date_time_out TIMESTAMPTZ
 );
 
+-- Refresh-токены
+CREATE TABLE refresh_tokens (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token      VARCHAR(500) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Расход
 CREATE TABLE raskhod (
     id                 SERIAL PRIMARY KEY,
-    raskhod_time       TIME NOT NULL,        -- 09:00 или 21:00
+    raskhod_time       TIME NOT NULL,
     raskhod_date       DATE NOT NULL,
     created_by_user_id INTEGER NOT NULL REFERENCES users(id),
     unit_id            INTEGER NOT NULL REFERENCES units(id),
@@ -189,7 +232,8 @@ CREATE TABLE raskhod_entries (
     id          SERIAL PRIMARY KEY,
     raskhod_id  INTEGER NOT NULL REFERENCES raskhod(id),
     employee_id INTEGER NOT NULL REFERENCES employees(id),
-    status_id   INTEGER NOT NULL REFERENCES user_statuses(id)
+    status_id   INTEGER NOT NULL REFERENCES user_statuses(id),
+    UNIQUE (raskhod_id, employee_id)
 );
 
 -- Тревоги
@@ -236,4 +280,3 @@ CREATE TABLE alert_responses (
 ## Correctness Properties
 
 *A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
-

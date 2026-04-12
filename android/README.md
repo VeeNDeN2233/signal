@@ -1,64 +1,80 @@
-# Android client (testable in Android Studio)
+# Android-клиент: Система учёта личного состава
 
-## Что уже сделано
+## Что реализовано
 
 - Полноценный Gradle-проект в `android/` (Kotlin + Android App module `app`)
-- `LoginActivity` с вызовом `POST /api/auth/login`
-- Хранение `access/refresh` токенов в `SharedPreferences`
-- `OkHttp` interceptor + authenticator для автоматического refresh через `POST /api/auth/refresh`
-- Простая `HomeActivity` после успешного входа
-- Зависимости по чеклисту: Retrofit, OkHttp, Firebase Messaging, Room, WorkManager
+- **`LoginActivity`** — вход по логину и паролю через `POST /api/auth/login`, регистрация FCM-токена
+- Хранение `access/refresh` токенов в `SharedPreferences` (`TokenStorage`)
+- **`AuthHeaderInterceptor`** (OkHttp) — автоматическая подстановка `Authorization: Bearer ...`
+- **`RefreshTokenAuthenticator`** (OkHttp) — автоматическое обновление access-токена через `POST /api/auth/refresh`
+- **`HomeActivity`** — главный экран с профилем сотрудника: ФИО, звание, должность, подразделение (загружается с `GET /api/employees/me`). Кнопка выхода.
+- **`MyFirebaseMessagingService`** — приём FCM data payload (`type=alert`, `alert_id=<id>`), запуск `AlarmPlayerService`, открытие `AlertActivity`
+- **`AlarmPlayerService`** — foreground service, воспроизводит системный alarm tone по кругу
+- **`AlertActivity`** — полноэкранный экран тревоги с кнопкой «Принял» → `POST /api/alerts/:id/respond`
+- **Offline-очередь** (Room + WorkManager):
+  - `AppDatabase`, `QueuedAlertResponse`, `QueuedAlertResponseDao` — локальная БД
+  - `AlertResponseQueue` — сохранение ответа при отсутствии сети
+  - `AlertSyncWorker` + `AlertSyncScheduler` — отправка при восстановлении соединения
+- Зависимости: Retrofit, OkHttp, Moshi (KotlinJsonAdapterFactory), Firebase Messaging, Room (KSP), WorkManager
 
 ## Как запустить в Android Studio
 
-1. Открой Android Studio → **Open** → выбери папку `android`.
-2. Дождись **Gradle Sync** (Studio скачает Gradle/JDK при необходимости).
-3. Создай/выбери Android Emulator (например Pixel + API 34/35).
-4. Запусти backend на хосте (Windows):
+1. Откройте Android Studio → **Open** → выберите папку `android`.
+2. Дождитесь **Gradle Sync** (Studio скачает Gradle/JDK при необходимости).
+3. Создайте/выберите Android Emulator (например Pixel + API 34/35).
+4. Запустите backend на хосте:
    - в `backend/`: `npm run dev`
-5. Нажми **Run** в Android Studio.
+5. Нажмите **Run** в Android Studio.
 
-## Настройка Firebase (для реального FCM)
+## Настройка Firebase (обязательно для FCM)
 
-1. Создай Firebase project и Android app с package name:
+1. Создайте Firebase project и Android app с package name:
    - `com.example.personnelaccounting`
-2. Скачай `google-services.json`.
-3. Положи файл сюда:
+2. Скачайте `google-services.json`.
+3. Положите файл сюда:
    - `android/app/google-services.json`
-4. Нажми **Sync Project with Gradle Files**.
-5. Запусти приложение.
+4. Для серверной отправки push-уведомлений положите файл сервисного аккаунта Firebase Admin SDK (`*.json`) в `backend/` и укажите путь в переменной окружения `GOOGLE_APPLICATION_CREDENTIALS` (файл `.env`).
+5. Нажмите **Sync Project with Gradle Files**.
+6. Запустите приложение.
 
-Примечание:
-- `google-services.json` добавлен в `.gitignore`, чтобы не утекали ключи.
-- Без этого файла приложение тоже запускается, но реальный FCM push работать не будет.
+> `google-services.json` добавлен в `.gitignore`, чтобы не утекали ключи. Без этого файла приложение запускается, но реальный FCM push работать не будет.
 
-## Важно для сети
+## Настройка сети
 
-В `ApiClient.kt` уже указан base URL:
+В `ApiClient.kt` указан `BASE_URL`:
 
-- `http://10.0.2.2:3000/`
+| Сценарий | Значение BASE_URL |
+|----------|-------------------|
+| Android Emulator → localhost хоста | `http://10.0.2.2:3000/` (текущее значение) |
+| Реальный телефон в локальной сети | `http://192.168.1.XXX:3000/` (IP компьютера) |
+| Удалённый сервер (VPS) | `https://your-domain.com/` |
+| Ngrok-тоннель | `https://xxxx.ngrok-free.app/` |
 
-Это правильный адрес для обращения **из Android Emulator к localhost хоста**.
+Для реального устройства в локальной сети:
+1. Измените `BASE_URL` в `ApiClient.kt` на IP вашего компьютера.
+2. Убедитесь, что телефон и компьютер в одной сети.
+3. Проверьте, что firewall на компьютере не блокирует порт 3000.
 
 ## Тест входа
 
-- Логин/пароль должен существовать в твоей БД (`users` + хэш пароля).
-- После успешного входа откроется экран `HomeActivity`.
+- Логин/пароль должен существовать в БД (`users` + хэш пароля).
+- После успешного входа откроется экран `HomeActivity` с профилем сотрудника.
 - Кнопка «Выйти» удаляет токены и возвращает на логин.
 
-## Тест “будильника” (тревоги)
+## Тест тревоги
 
-Реализовано:
+Через реальный FCM (рекомендуется):
+1. Настройте Firebase (см. выше).
+2. Войдите в приложение — FCM-токен автоматически зарегистрируется на сервере.
+3. Объявите тревогу через Web App (кнопка «Объявить тревогу» на странице командира).
+4. На телефоне сработает звуковой сигнал и откроется экран тревоги.
+5. Нажмите «Принял» — ответ отправится на сервер.
 
-- `MyFirebaseMessagingService` принимает FCM data payload с полями `type=alert`, `alert_id=<id>`
-- запускается `AlarmPlayerService` как foreground service и начинает играть **системный alarm tone по кругу**
-- открывается `AlertActivity` поверх экрана (full-screen)
+При отсутствии сети ответ сохранится в локальной БД и будет отправлен автоматически при восстановлении соединения.
 
-Чтобы проверить вживую через FCM, нужен настроенный Firebase project и `google-services.json` (см. раздел выше).
+## Сборка APK для демонстрации
 
-Проверка без Firebase:
-
-- После логина на экране `HomeActivity` есть кнопка **«Симулировать тревогу»**.
-- Она запускает тот же сценарий: foreground alarm service + `AlertActivity`.
-- Так можно проверить громкость/цикличность будильника и отправку/оффлайн-очередь без FCM.
-
+1. В Android Studio: **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
+2. APK будет в `android/app/build/outputs/apk/debug/app-debug.apk`.
+3. Перед установкой APK на устройстве включите «Установка из неизвестных источников».
+4. Не забудьте изменить `BASE_URL` на адрес, доступный с реального устройства.

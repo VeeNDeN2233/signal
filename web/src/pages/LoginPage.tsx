@@ -90,16 +90,17 @@ const pageStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#f1f5f9',
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  background: 'linear-gradient(165deg, #e2e8f0 0%, #f1f5f9 45%, #e8eef5 100%)',
 }
 
 const formStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 8,
+  background: 'var(--bg-elevated)',
+  borderRadius: 12,
   padding: '32px 36px',
   width: 340,
-  boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+  maxWidth: 'calc(100vw - 32px)',
+  border: '1px solid var(--border)',
+  boxShadow: 'var(--shadow-md)',
 }
 
 const labelStyle: React.CSSProperties = {
@@ -113,22 +114,22 @@ const labelStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '9px 11px',
-  border: '1px solid #cbd5e1',
-  borderRadius: 4,
+  border: '1px solid var(--border)',
+  borderRadius: 8,
   fontSize: 14,
   boxSizing: 'border-box',
 }
 
 const btnStyle: React.CSSProperties = {
   width: '100%',
-  background: '#2563eb',
+  background: 'var(--primary)',
   color: '#fff',
   border: 'none',
-  borderRadius: 4,
-  padding: '10px',
+  borderRadius: 8,
+  padding: '11px',
   fontSize: 15,
   cursor: 'pointer',
-  fontWeight: 500,
+  fontWeight: 600,
 }
 
 const errorStyle: React.CSSProperties = {

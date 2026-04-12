@@ -9,7 +9,6 @@ interface User {
   login: string
   role_id: number
   unit_id: number | null
-  user_status_id: number | null
   last_name: string | null
   first_name: string | null
   middle_name: string | null
@@ -25,17 +24,11 @@ interface Unit {
   name: string
 }
 
-interface UserStatus {
-  id: number
-  name: string
-}
-
 interface FormState {
   login: string
   password: string
   role_id: string
   unit_id: string
-  user_status_id: string
   last_name: string
   first_name: string
   middle_name: string
@@ -46,7 +39,6 @@ const emptyForm: FormState = {
   password: '',
   role_id: '',
   unit_id: '',
-  user_status_id: '',
   last_name: '',
   first_name: '',
   middle_name: '',
@@ -58,7 +50,6 @@ export function UsersPage() {
 
   const [roles, setRoles] = useState<Role[]>([])
   const [units, setUnits] = useState<Unit[]>([])
-  const [statuses, setStatuses] = useState<UserStatus[]>([])
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
@@ -78,9 +69,6 @@ export function UsersPage() {
     apiClient.get<{ data: Unit[] }>('/units', { params: { page: 1, page_size: 100 } })
       .then((r) => setUnits(r.data.data))
       .catch(() => {})
-    apiClient.get<{ data: UserStatus[] }>('/user-statuses', { params: { page: 1, page_size: 100 } })
-      .then((r) => setStatuses(r.data.data))
-      .catch(() => {})
   }, [])
 
   function roleName(id: number) {
@@ -90,11 +78,6 @@ export function UsersPage() {
     if (!id) return '—'
     return units.find((u) => u.id === id)?.name ?? String(id)
   }
-  function statusName(id: number | null) {
-    if (!id) return '—'
-    return statuses.find((s) => s.id === id)?.name ?? String(id)
-  }
-
   function openAdd() {
     setEditing(null)
     setForm(emptyForm)
@@ -109,7 +92,6 @@ export function UsersPage() {
       password: '',
       role_id: String(row.role_id),
       unit_id: row.unit_id ? String(row.unit_id) : '',
-      user_status_id: row.user_status_id ? String(row.user_status_id) : '',
       last_name: row.last_name ?? '',
       first_name: row.first_name ?? '',
       middle_name: row.middle_name ?? '',
@@ -137,7 +119,6 @@ export function UsersPage() {
       login: form.login.trim(),
       role_id: Number(form.role_id),
       unit_id: form.unit_id ? Number(form.unit_id) : null,
-      user_status_id: form.user_status_id ? Number(form.user_status_id) : null,
       last_name: form.last_name.trim() || null,
       first_name: form.first_name.trim() || null,
       middle_name: form.middle_name.trim() || null,
@@ -178,7 +159,6 @@ export function UsersPage() {
             },
             { key: 'role_id', label: 'Роль', render: (r) => roleName(r.role_id) },
             { key: 'unit_id', label: 'Подразделение', render: (r) => unitName(r.unit_id) },
-            { key: 'user_status_id', label: 'Статус', render: (r) => statusName(r.user_status_id) },
           ]}
           rows={rows}
           page={page}
@@ -237,15 +217,6 @@ export function UsersPage() {
                 <option value="">— не указано —</option>
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Статус">
-              <select style={inputStyle} value={form.user_status_id} onChange={(e) => setField('user_status_id', e.target.value)}>
-                <option value="">— не указано —</option>
-                {statuses.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
             </Field>

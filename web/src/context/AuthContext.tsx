@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
-import type { Role } from '../types/auth'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import type { Role, SessionUser } from '../types/auth'
 import { tokenStorage } from '../lib/tokenStorage'
 import { parseJwt } from '../lib/parseJwt'
+import apiClient from '../lib/apiClient'
 
 interface AuthState {
   accessToken: string | null
@@ -14,6 +15,7 @@ interface AuthContextValue extends AuthState {
   login: (accessToken: string, refreshToken: string) => void
   logout: () => void
   isAuthenticated: boolean
+  sessionUser: SessionUser | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -34,6 +36,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(() =>
     resolveStateFromToken(tokenStorage.getAccess())
   )
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
+
+  useEffect(() => {
+    if (!state.accessToken) {
+      setSessionUser(null)
+      return
+    }
+    let cancelled = false
+    apiClient
+      .get<{ data: SessionUser }>('/auth/me')
+      .then((res) => {
+        if (!cancelled) setSessionUser(res.data.data)
+      })
+      .catch(() => {
+        if (!cancelled) setSessionUser(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [state.accessToken])
 
   const login = useCallback((accessToken: string, refreshToken: string) => {
     tokenStorage.setTokens(accessToken, refreshToken)
@@ -43,11 +65,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     tokenStorage.clear()
     setState({ accessToken: null, role: null, userId: null, unitId: null })
+    setSessionUser(null)
   }, [])
 
   return (
     <AuthContext.Provider
-      value={{ ...state, login, logout, isAuthenticated: !!state.accessToken }}
+      value={{
+        ...state,
+        login,
+        logout,
+        isAuthenticated: !!state.accessToken,
+        sessionUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

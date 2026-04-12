@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { CommanderNav } from '../components/CommanderNav'
+import { commanderPageBody } from '../layout/commanderLayout'
 import apiClient from '../lib/apiClient'
 
 interface RaskhodRecord {
@@ -99,7 +100,7 @@ function groupByMonth(records: RaskhodRecord[]): { monthKey: string; items: Rask
 
 export function RaskhodHistoryPage() {
   const [allRecords, setAllRecords] = useState<RaskhodRecord[]>([])
-  const [meta, setMeta] = useState<Meta>({ page: 1, page_size: 200, total: 0 })
+  const [, setMeta] = useState<Meta>({ page: 1, page_size: 200, total: 0 })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -244,7 +245,7 @@ export function RaskhodHistoryPage() {
   return (
     <div style={pageStyle}>
       {/* Шапка */}
-      <CommanderNav title="История расходов личного состава" />
+      <CommanderNav title="История расходов" />
 
       {/* Фильтры */}
       <div style={filtersRowStyle}>
@@ -476,7 +477,8 @@ function summaryChipStyle(name: string): React.CSSProperties {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const pageStyle: React.CSSProperties = {
-  maxWidth: 1100, margin: '0 auto', padding: '24px 16px', fontFamily: 'system-ui, sans-serif',
+  ...commanderPageBody,
+  maxWidth: 1100,
 }
 const filtersRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap',

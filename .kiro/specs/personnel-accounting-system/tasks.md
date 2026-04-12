@@ -2,202 +2,200 @@
 
 ## Overview
 
-Реализация трёхзвенного приложения: Backend (Node.js/Express + PostgreSQL), Web App (React SPA), Android App (Kotlin). Задачи выстроены инкрементально — каждый шаг опирается на предыдущий и завершается интеграцией компонентов.
+Реализация трёхзвенного приложения: Backend (Node.js/Express/TypeScript + PostgreSQL), Web App (React SPA, Vite), Android App (Kotlin). Задачи выстроены инкрементально — каждый шаг опирается на предыдущий.
 
 ## Tasks
 
 - [x] 1. Инициализация проекта и схема базы данных
   - Создать монорепозиторий с директориями `backend/`, `web/`, `android/`
   - Инициализировать `backend/` как Node.js/Express проект с TypeScript
-  - Написать SQL-миграцию: таблицы `roles`, `users`, `user_statuses`, `positions`, `ranks`, `units`, `employees`, `audit_log`, `raskhod`, `raskhod_entries`, `alerts`, `alert_responses`
-  - Добавить seed-данные для таблицы `roles` (user, admin, commander) и `user_statuses`
+  - Написать SQL-миграции: `001_init.sql` (таблицы `roles`, `users`, `user_statuses`, `positions`, `ranks`, `units`, `employees`, `audit_log`, `raskhod`, `raskhod_entries`, `alerts`, `alert_responses`), `002_seed.sql` (начальные данные), `003_refresh_tokens.sql`, `004_users_unit_status.sql` (`unit_id`, `user_status_id` в `users`, ON DELETE SET NULL для `employees.user_id`)
   - Настроить подключение к PostgreSQL через переменные окружения
-  - _Requirements: 1.1–1.11_
+  - _Requirements: 1.1–1.12_
 
 - [x] 2. Аутентификация и авторизация (Backend)
   - [x] 2.1 Реализовать `POST /api/auth/login`
-    - Проверка логина/пароля, bcrypt (cost ≥ 10), возврат JWT access + refresh токенов
+    - Проверка логина/пароля, bcrypt (cost ≥ 10), возврат JWT access + refresh токенов + роли
     - Запись `date_time_in` в `audit_log`
-    - _Requirements: 2.1, 2.2, 2.5, 2.6_
+    - Определение `unit_id` через `COALESCE(employees.unit_id, users.unit_id)`
+    - _Requirements: 2.1, 2.2, 2.5, 2.6, 2.7_
 
   - [x] 2.2 Реализовать `POST /api/auth/refresh` и `POST /api/auth/logout`
-    - Refresh: валидация refresh-токена из БД, выдача новой пары
-    - Logout: запись `date_time_out` в `audit_log`, инвалидация refresh-токена
+    - Refresh: валидация refresh-токена из таблицы `refresh_tokens`, rotation (старый удаляется)
+    - Logout: запись `date_time_out` в `audit_log`, удаление refresh-токена
     - _Requirements: 2.4, 2.6_
 
   - [x] 2.3 Реализовать JWT middleware для защищённых маршрутов
     - Проверка access-токена, извлечение `sub`, `role`, `unit_id`
-    - Возврат HTTP 401 при отсутствии/невалидном токене
-    - Возврат HTTP 403 при недостаточных правах
+    - HTTP 401 при отсутствии/невалидном токене, HTTP 403 при недостаточных правах
     - _Requirements: 7.4, 7.5_
 
-  - [ ]* 2.4 Написать unit-тесты для auth-модуля
-    - Тест: корректный логин → JWT пара
-    - Тест: неверный пароль → HTTP 401
-    - Тест: истёкший access-токен → HTTP 401
-    - Тест: refresh с валидным токеном → новая пара
-    - _Requirements: 2.1, 2.2, 2.4_
-
-- [x] 3. Checkpoint — убедиться, что аутентификация работает
-  - Все тесты проходят, ask the user if questions arise.
-
-- [x] 4. Административные CRUD-эндпоинты (Backend)
-  - [x] 4.1 Реализовать CRUD для `users`
+- [x] 3. Административные CRUD-эндпоинты (Backend)
+  - [x] 3.1 Реализовать CRUD для `users`
     - `GET/POST /api/users`, `GET/PUT/DELETE /api/users/:id`
     - HTTP 409 при дублировании `login`
+    - Поддержка ФИО (создание/обновление связанного `employees` в транзакции)
     - Постраничный вывод (`page`, `page_size`)
-    - _Requirements: 3.1, 3.2, 3.4_
+    - _Requirements: 3.3, 3.5, 3.7_
 
-  - [x] 4.2 Реализовать CRUD для `employees`
+  - [x] 3.2 Реализовать CRUD для `employees`
     - `GET/POST /api/employees`, `GET/PUT/DELETE /api/employees/:id`
-    - Постраничный вывод
-    - _Requirements: 3.1, 3.4_
+    - Фильтрация по `?unit_id=X`, постраничный вывод
+    - Возврат связанных данных (`user_login`, `user_role_id`, `position_name`, `rank_name`, `unit_name`)
+    - _Requirements: 3.1, 3.7, 3.9_
 
-  - [x] 4.3 Реализовать CRUD для справочников `positions`, `ranks`, `units`, `user_statuses`
+  - [x] 3.3 Реализовать CRUD для справочников `positions`, `ranks`, `units`, `user_statuses`
     - HTTP 409 при попытке удалить запись с активными ссылками
-    - _Requirements: 3.1, 3.3, 3.4_
+    - _Requirements: 3.4, 3.6_
 
-  - [ ]* 4.4 Написать unit-тесты для admin-эндпоинтов
-    - Тест: создание пользователя с дублирующимся login → HTTP 409
-    - Тест: удаление должности с привязанными сотрудниками → HTTP 409
-    - Тест: постраничный список → корректные `meta.page`, `meta.total`
-    - _Requirements: 3.2, 3.3, 3.4_
+  - [x] 3.4 Реализовать `GET /api/roles` — список ролей (только чтение)
+
+  - [x] 3.5 Реализовать `GET /api/audit-log` — журнал входов/выходов с информацией о пользователе
+    - _Requirements: 3.8_
+
+- [x] 4. Профиль и данные подразделения (Backend)
+  - [x] 4.1 Реализовать `GET /api/employees/me` — профиль текущего сотрудника
+  - [x] 4.2 Реализовать `GET /api/employees/unit` — список сотрудников подразделения командира
+  - [x] 4.3 Реализовать `GET /api/employees/statuses` — список статусов
+  - [x] 4.4 Реализовать `PUT /api/employees/me/fcm-token` — обновление FCM-токена
+  - _Requirements: 6.7, 6.6_
 
 - [x] 5. Расход личного состава (Backend)
-  - [x] 5.1 Реализовать `POST /api/raskhod`
-    - Сохранение в `raskhod` + `raskhod_entries`
-    - HTTP 409 при дублировании (дата + время + подразделение)
-    - HTTP 201 при успехе
+  - [x] 5.1 Реализовать `POST /api/raskhod` — создание расхода
+    - Сохранение в `raskhod` + `raskhod_entries`, HTTP 409 при дублировании
     - _Requirements: 4.5, 4.6_
 
-  - [x] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id`
-    - История расходов подразделения commander'а
-    - Детали расхода с записями по сотрудникам
+  - [x] 5.2 Реализовать `GET /api/raskhod` и `GET /api/raskhod/:id` — история и детали
     - _Requirements: 4.7_
 
-  - [ ]* 5.3 Написать unit-тесты для расхода
-    - Тест: повторная отправка на ту же дату/время → HTTP 409
-    - Тест: успешное создание → HTTP 201, записи в БД
-    - _Requirements: 4.5, 4.6_
+  - [x] 5.3 Реализовать `PUT /api/raskhod/:id` — редактирование записей расхода
+    - _Requirements: 4.8_
+
+  - [x] 5.4 Реализовать `DELETE /api/raskhod/:id` — удаление расхода
+    - Удаление `raskhod_entries` + `raskhod` в транзакции
+    - _Requirements: 4.10_
+
+  - [x] 5.5 Реализовать `GET /api/raskhod/:id/download` — генерация DOCX-документа
+    - _Requirements: 4.9_
 
 - [x] 6. Тревога (Backend + FCM)
-  - [x] 6.1 Реализовать `POST /api/alerts`
-    - Создание записи в `alerts`, HTTP 201
-    - Отправка FCM push-уведомлений всем сотрудникам подразделения (fcm_token) через FCM HTTP v1 API
-    - Логирование ошибок доставки без прерывания отправки остальным
+  - [x] 6.1 Реализовать `POST /api/alerts` — объявление тревоги + отправка FCM push
     - _Requirements: 5.2, 5.3, 5.4_
 
-  - [x] 6.2 Реализовать `POST /api/alerts/:id/respond`
-    - Создание записи в `alert_responses`, HTTP 201
-    - Доступ только для роли «user»
-    - _Requirements: 6.4, 7.3_
+  - [x] 6.2 Реализовать `POST /api/alerts/:id/respond` — подтверждение от сотрудника
+    - _Requirements: 6.3, 6.4_
 
-  - [x] 6.3 Реализовать `GET /api/alerts/:id/responses`
-    - Список откликов с `responded_at` для commander'а
+  - [x] 6.3 Реализовать `GET /api/alerts/:id/responses` — список откликов
     - _Requirements: 5.5, 5.6_
 
-  - [x] 6.4 Реализовать `PUT /api/employees/me/fcm-token`
-    - Обновление `fcm_token` в таблице `employees`
-    - _Requirements: 6.6_
+  - [x] 6.4 Реализовать `GET /api/alerts` — история тревог подразделения с пагинацией
+    - _Requirements: 5.8_
 
-  - [ ]* 6.5 Написать unit-тесты для тревоги
-    - Тест: создание тревоги → запись в `alerts`, вызов FCM
-    - Тест: подтверждение от employee → запись в `alert_responses`
-    - Тест: повторное подтверждение → HTTP 409 (UNIQUE constraint)
-    - _Requirements: 5.2, 5.3, 6.4_
-
-- [x] 7. Checkpoint — убедиться, что все backend-тесты проходят
-  - Все тесты проходят, ask the user if questions arise.
-
-- [x] 8. Web App — базовая структура и аутентификация (React)
+- [x] 7. Web App — базовая структура и аутентификация (React)
   - Инициализировать React SPA (Vite + TypeScript)
-  - Настроить React Router: `/login`, `/admin/*`, `/raskhod`, `/raskhod/history`, `/alerts`
-  - Реализовать страницу `/login`: форма логина, вызов `POST /api/auth/login`, сохранение токенов
-  - Реализовать axios-интерцептор для автоматического обновления access-токена через refresh
-  - Реализовать защищённые маршруты (PrivateRoute) с проверкой роли
+  - Настроить React Router с маршрутами для всех страниц
+  - Реализовать страницу `/login`, `AuthContext`, axios-интерцептор для refresh
+  - Реализовать защищённые маршруты `PrivateRoute` с проверкой роли
   - _Requirements: 2.1, 2.3, 2.4, 7.4, 7.5_
 
-- [x] 9. Web App — административная панель (React)
-  - [x] 9.1 Реализовать навигацию и layout для роли admin
-    - Боковое меню с разделами: Пользователи, Сотрудники, Должности, Звания, Подразделения, Статусы
-    - _Requirements: 3.5_
+- [x] 8. Web App — административная панель (React)
+  - [x] 8.1 Реализовать навигацию и layout (`AdminPage` с боковым меню)
+    - Разделы: Личный состав, Учётные записи, Должности, Звания, Подразделения, Статусы, Журнал входов
+    - _Requirements: 3.1, 8.3_
 
-  - [x] 9.2 Реализовать CRUD-таблицы для каждого справочника
-    - Таблица с постраничной навигацией, кнопки «Добавить», «Редактировать», «Удалить»
-    - Модальные формы создания/редактирования
-    - Отображение ошибок HTTP 409 пользователю
-    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 8.2 Реализовать `RosterPage` — единая страница управления личным составом
+    - Двухшаговый интерфейс: выбор подразделения → список сотрудников
+    - Добавление, редактирование, удаление сотрудников с привязкой/созданием учётных записей
+    - Поиск по ФИО, динамическая загрузка ролей
+    - _Requirements: 3.1, 3.2, 3.9, 3.10_
 
-- [x] 10. Web App — расход личного состава (React)
-  - Реализовать страницу `/raskhod`: форма со списком сотрудников подразделения
-  - Статус «налицо» по умолчанию для каждого сотрудника
-  - Выпадающий список статусов, мгновенное обновление без перезагрузки
-  - Выбор времени (09:00 / 21:00) и даты
-  - Кнопка «Отправить», обработка HTTP 409 (дубликат)
-  - Страница `/raskhod/history` с историей и просмотром деталей
-  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
+  - [x] 8.3 Реализовать `UsersPage` — прямое управление учётными записями
+    - Включая возможность создания admin-аккаунтов
+    - _Requirements: 3.3_
 
-- [x] 11. Web App — панель тревоги (React)
-  - Реализовать страницу `/alerts` с кнопкой «Тревога»
-  - После нажатия — таблица сотрудников с колонками «Принял» / «Не ответил» и временем ответа
-  - Polling каждые 10 секунд (`GET /api/alerts/:id/responses`) для обновления статусов
-  - _Requirements: 5.1, 5.2, 5.5, 5.6_
+  - [x] 8.4 Реализовать CRUD-таблицы для каждого справочника
+    - `PositionsPage`, `RanksPage`, `UnitsPage`, `UserStatusesPage`
+    - _Requirements: 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 12. Checkpoint — проверить Web App end-to-end через автотесты
-  - Все тесты проходят, ask the user if questions arise.
+  - [x] 8.5 Реализовать `AuditLogPage` — журнал входов
+    - _Requirements: 3.8_
 
-- [ ] 13. Android App — базовая структура и аутентификация (Kotlin)
-  - Создать Android-проект (Kotlin, минимальный SDK совместимый с FCM)
-  - Добавить зависимости: Retrofit, OkHttp, Firebase Messaging, Room, WorkManager
-  - Реализовать `LoginActivity`: форма логина, вызов `POST /api/auth/login`, сохранение токенов в SharedPreferences/EncryptedSharedPreferences
-  - Реализовать автоматическое обновление access-токена через OkHttp Interceptor
+- [x] 9. Web App — расход личного состава (React)
+  - [x] 9.1 Реализовать `RaskhodPage` — форма расхода
+    - Чипы-кнопки для выбора статуса (по умолчанию «налицо»), командир исключён из списка
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+
+  - [x] 9.2 Реализовать `RaskhodHistoryPage` — история расходов
+    - Двухколоночный интерфейс с группировкой по месяцам, поиском по дате, фильтром по времени
+    - Просмотр деталей, редактирование статусов, скачивание DOCX, удаление
+    - _Requirements: 4.7, 4.8, 4.9, 4.10_
+
+- [x] 10. Web App — панель тревоги (React)
+  - [x] 10.1 Реализовать `AlertsPage` — объявление тревоги
+    - Кнопка «Объявить тревогу», live-таблица откликов (polling 10 сек), активная тревога в localStorage
+    - Командир исключён из списка откликов
+    - _Requirements: 5.1, 5.2, 5.5, 5.6, 5.7_
+
+  - [x] 10.2 Реализовать `AlertsHistoryPage` — история тревог
+    - Двухпанельный интерфейс: список тревог слева, детали откликов справа
+    - Поиск по дате, фильтр по полноте отклика, поиск по ФИО в деталях
+    - _Requirements: 5.8_
+
+- [x] 11. Web App — навигация (React)
+  - Реализовать `CommanderNav` — единая навигационная панель для всех страниц командира
+  - Подсветка активного раздела через `NavLink`
+  - _Requirements: 8.1, 8.2_
+
+- [x] 12. Android App — базовая структура и аутентификация (Kotlin)
+  - Создать Android-проект (Kotlin, minSdk 26)
+  - Зависимости: Retrofit, OkHttp, Moshi, Firebase Messaging, Room, WorkManager
+  - `LoginActivity`: форма логина, вызов `POST /api/auth/login`, сохранение токенов в SharedPreferences
+  - `AuthHeaderInterceptor` + `RefreshTokenAuthenticator` (OkHttp): автоматическое обновление JWT
   - _Requirements: 2.1, 2.3, 2.4_
 
-- [ ] 14. Android App — FCM и получение тревоги (Kotlin)
-  - [ ] 14.1 Реализовать `FCMService` (extends `FirebaseMessagingService`)
-    - Приём push-уведомления о тревоге
-    - Воспроизведение звукового сигнала (будильник)
-    - Отображение уведомления с кнопкой «Принял»
+- [x] 13. Android App — главный экран и профиль (Kotlin)
+  - `HomeActivity`: отображение профиля сотрудника (ФИО, звание, должность, подразделение)
+  - Загрузка данных через `GET /api/employees/me`
+  - Кнопка выхода
+  - _Requirements: 6.7_
+
+- [x] 14. Android App — FCM и получение тревоги (Kotlin)
+  - [x] 14.1 Реализовать `MyFirebaseMessagingService`
+    - Приём FCM data payload (`type=alert`, `alert_id=<id>`)
+    - Запуск `AlarmPlayerService` (foreground service, системный alarm tone)
+    - Открытие `AlertActivity` (полноэкранная)
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 14.2 Реализовать `AlertNotificationActivity`
+  - [x] 14.2 Реализовать `AlertActivity`
     - Кнопка «Принял» → вызов `POST /api/alerts/:id/respond`
-    - _Requirements: 6.3_
+    - _Requirements: 6.2, 6.3_
 
-  - [ ] 14.3 Реализовать `OfflineQueue` (Room + WorkManager)
-    - Сохранение ответа локально при отсутствии сети
-    - WorkManager-задача для отправки при восстановлении соединения
+  - [x] 14.3 Реализовать offline-очередь (Room + WorkManager)
+    - `AppDatabase`, `QueuedAlertResponse`, `QueuedAlertResponseDao`, `AlertResponseQueue`
+    - `AlertSyncWorker` + `AlertSyncScheduler` для отправки при восстановлении сети
     - _Requirements: 6.5_
 
-  - [ ] 14.4 Реализовать регистрацию FCM-токена при входе
-    - Получение токена через `FirebaseMessaging.getInstance().token`
-    - Вызов `PUT /api/employees/me/fcm-token` после успешного логина
+  - [x] 14.4 Реализовать регистрацию FCM-токена при входе
+    - `PUT /api/employees/me/fcm-token` после успешного логина
     - _Requirements: 6.6_
 
-  - [ ]* 14.5 Написать unit-тесты для OfflineQueue
-    - Тест: ответ сохраняется в Room при отсутствии сети
-    - Тест: WorkManager отправляет ответ при восстановлении сети
-    - _Requirements: 6.5_
-
 - [ ] 15. Валидация входящих данных (Backend)
-  - Добавить middleware валидации (zod или joi) для всех POST/PUT эндпоинтов
+  - Добавить middleware валидации для всех POST/PUT эндпоинтов
   - Возврат HTTP 400 с описанием ошибки при некорректном формате
   - _Requirements: 7.6_
 
-- [ ]* 16. Написать интеграционные тесты для ключевых сценариев
-  - Тест: полный цикл расхода (login → создание расхода → проверка в БД)
-  - Тест: полный цикл тревоги (login → POST /api/alerts → POST /api/alerts/:id/respond → GET responses)
-  - Тест: разграничение доступа (commander не может обратиться к admin-эндпоинтам → HTTP 403)
-  - _Requirements: 4.5, 5.2, 6.4, 7.1, 7.2, 7.3_
-
-- [ ] 17. Final checkpoint — все тесты проходят
-  - Все тесты проходят, ask the user if questions arise.
+- [ ] 16. Тестирование
+  - Unit-тесты для auth-модуля
+  - Unit-тесты для admin-эндпоинтов
+  - Unit-тесты для расхода и тревоги
+  - Интеграционные тесты для ключевых сценариев
+  - E2E тесты Web App (Playwright)
 
 ## Notes
 
-- Задачи с `*` опциональны и могут быть пропущены для ускорения MVP
-- Каждая задача ссылается на конкретные требования для трассируемости
-- Checkpoints обеспечивают инкрементальную валидацию
-- Backend реализуется на Node.js/Express + TypeScript + PostgreSQL
-- Web App — React + TypeScript (Vite)
-- Android App — Kotlin, Firebase Messaging, Room, WorkManager
+- Backend: Node.js/Express + TypeScript + PostgreSQL
+- Web App: React + TypeScript (Vite)
+- Android App: Kotlin, Firebase Messaging, Room, WorkManager, Retrofit, OkHttp, Moshi
+- Миграции БД: `001_init.sql`, `002_seed.sql`, `003_refresh_tokens.sql`, `004_users_unit_status.sql`
+- Генерация DOCX на сервере через библиотеку `docx`
+- Firebase Admin SDK для серверной отправки FCM

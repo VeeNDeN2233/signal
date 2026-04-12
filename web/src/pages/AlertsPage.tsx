@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { CommanderNav } from '../components/CommanderNav'
+import { commanderPageBody } from '../layout/commanderLayout'
 import apiClient from '../lib/apiClient'
 
 interface AlertResponse {
@@ -107,7 +108,7 @@ export function AlertsPage() {
 
   return (
     <div style={pageStyle}>
-      <CommanderNav title="Панель тревоги" />
+      <CommanderNav title="Тревога" />
 
       {error && <div style={errorBannerStyle}>{error}</div>}
 
@@ -191,10 +192,8 @@ export function AlertsPage() {
 
 // Styles
 const pageStyle: React.CSSProperties = {
+  ...commanderPageBody,
   maxWidth: 900,
-  margin: '0 auto',
-  padding: '24px 16px',
-  fontFamily: 'system-ui, sans-serif',
 }
 
 const errorBannerStyle: React.CSSProperties = {

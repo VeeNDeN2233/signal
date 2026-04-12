@@ -16,7 +16,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     const total = parseInt(countResult.rows[0].count, 10);
 
     const result = await pool.query(
-      `SELECT u.id, u.login, u.role_id, r.name AS role_name, u.unit_id, u.user_status_id,
+      `SELECT u.id, u.login, u.role_id, r.name AS role_name, u.unit_id,
               e.last_name, e.first_name, e.middle_name
        FROM users u
        JOIN roles r ON r.id = u.role_id
@@ -35,7 +35,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/users — создание пользователя (опционально с ФИО → запись в employees)
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const { login, password, role_id, unit_id, user_status_id, last_name, first_name, middle_name } = req.body;
+  const { login, password, role_id, unit_id, last_name, first_name, middle_name } = req.body;
 
   if (!login || !password || !role_id) {
     res.status(400).json({ error: 'Поля login, password и role_id обязательны' });
@@ -58,10 +58,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const password_hash = await bcrypt.hash(password, 10);
 
     const userResult = await client.query(
-      `INSERT INTO users (login, password_hash, role_id, unit_id, user_status_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, login, role_id, unit_id, user_status_id`,
-      [login, password_hash, role_id, unit_id || null, user_status_id || null]
+      `INSERT INTO users (login, password_hash, role_id, unit_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, login, role_id, unit_id`,
+      [login, password_hash, role_id, unit_id || null]
     );
     const user = userResult.rows[0];
 
@@ -91,7 +91,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
   try {
     const result = await pool.query(
-      `SELECT u.id, u.login, u.role_id, r.name AS role_name, u.unit_id, u.user_status_id,
+      `SELECT u.id, u.login, u.role_id, r.name AS role_name, u.unit_id,
               e.last_name, e.first_name, e.middle_name
        FROM users u
        JOIN roles r ON r.id = u.role_id
@@ -115,7 +115,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 // PUT /api/users/:id — обновление пользователя (включая ФИО в employees)
 router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { login, password, role_id, unit_id, user_status_id, last_name, first_name, middle_name } = req.body;
+  const { login, password, role_id, unit_id, last_name, first_name, middle_name } = req.body;
 
   const client = await pool.connect();
   try {
@@ -150,14 +150,13 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
     }
     if (role_id) { fields.push(`role_id = $${paramIdx++}`); values.push(role_id); }
     if (unit_id !== undefined) { fields.push(`unit_id = $${paramIdx++}`); values.push(unit_id || null); }
-    if (user_status_id !== undefined) { fields.push(`user_status_id = $${paramIdx++}`); values.push(user_status_id || null); }
 
     let userRow: Record<string, unknown> = existing.rows[0];
     if (fields.length > 0) {
       values.push(id);
       const result = await client.query(
         `UPDATE users SET ${fields.join(', ')} WHERE id = $${paramIdx}
-         RETURNING id, login, role_id, unit_id, user_status_id`,
+         RETURNING id, login, role_id, unit_id`,
         values
       );
       userRow = result.rows[0];

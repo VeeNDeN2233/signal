@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/ranks', label: 'Звания' },
   { to: '/admin/units', label: 'Подразделения' },
   { to: '/admin/user-statuses', label: 'Статусы' },
-  { to: '/admin/audit-log', label: 'Журнал входов' },
+  { to: '/admin/audit-log', label: 'Журнал событий' },
 ]
 
 export function AdminPage() {

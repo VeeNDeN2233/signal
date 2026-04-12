@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../db';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -243,6 +244,63 @@ router.post('/logout', async (req: Request, res: Response): Promise<void> => {
     res.json({ message: 'Выход выполнен успешно' });
   } catch (err) {
     console.error('Ошибка при выходе:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ─── GET /api/auth/me — текущий пользователь (по access-токену) ─────────────
+
+router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: 'Не аутентифицирован' });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT u.login, r.name AS role,
+              un.name AS unit_name,
+              e.last_name, e.first_name, e.middle_name,
+              p.name AS position_name
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       LEFT JOIN employees e ON e.user_id = u.id
+       LEFT JOIN units un ON un.id = COALESCE(e.unit_id, u.unit_id)
+       LEFT JOIN positions p ON p.id = e.position_id
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Пользователь не найден' });
+      return;
+    }
+
+    const row = result.rows[0] as {
+      login: string;
+      role: string;
+      unit_name: string | null;
+      last_name: string | null;
+      first_name: string | null;
+      middle_name: string | null;
+      position_name: string | null;
+    };
+
+    const fioParts = [row.last_name, row.first_name, row.middle_name].filter(Boolean) as string[];
+    const fio = fioParts.length > 0 ? fioParts.join(' ') : null;
+
+    res.json({
+      data: {
+        login: row.login,
+        role: row.role,
+        unit_name: row.unit_name,
+        position_name: row.position_name,
+        fio,
+      },
+    });
+  } catch (err) {
+    console.error('Ошибка при получении профиля:', err);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });

@@ -12,3 +12,12 @@ export interface JwtPayload {
   iat: number
   exp: number
 }
+
+/** Ответ GET /api/auth/me */
+export interface SessionUser {
+  login: string
+  role: string
+  unit_name: string | null
+  position_name: string | null
+  fio: string | null
+}

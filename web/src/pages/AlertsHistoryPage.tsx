@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { CommanderNav } from '../components/CommanderNav'
+import { commanderPageBody } from '../layout/commanderLayout'
 import apiClient from '../lib/apiClient'
 
 interface AlertRecord {
@@ -219,7 +220,7 @@ export function AlertsHistoryPage() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const pageStyle: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '24px 16px', fontFamily: 'system-ui, sans-serif' }
+const pageStyle: React.CSSProperties = { ...commanderPageBody, maxWidth: 1100 }
 const errorBannerStyle: React.CSSProperties = { background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 4, padding: '8px 12px', marginBottom: 12, fontSize: 14 }
 
 const filtersRowStyle: React.CSSProperties = {

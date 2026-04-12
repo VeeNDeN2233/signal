@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { CommanderNav } from '../components/CommanderNav'
+import { commanderPageBody } from '../layout/commanderLayout'
 import apiClient from '../lib/apiClient'
 
 interface Employee {
@@ -105,7 +105,7 @@ export function RaskhodPage() {
 
   return (
     <div style={pageStyle}>
-      <CommanderNav title="Расход личного состава" />
+      <CommanderNav title="Расход" />
 
       {loadError && <div style={errorBannerStyle}>{loadError}</div>}
 
@@ -230,10 +230,8 @@ export function RaskhodPage() {
 
 // Styles
 const pageStyle: React.CSSProperties = {
+  ...commanderPageBody,
   maxWidth: 800,
-  margin: '0 auto',
-  padding: '24px 16px',
-  fontFamily: 'system-ui, sans-serif',
 }
 
 const controlsRowStyle: React.CSSProperties = {

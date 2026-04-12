@@ -49,7 +49,7 @@ export function EmployeesPage() {
   const [positions, setPositions] = useState<NamedItem[]>([])
   const [ranks, setRanks] = useState<NamedItem[]>([])
   const [units, setUnits] = useState<NamedItem[]>([])
-  const [users, setUsers] = useState<UserItem[]>([])
+  const [, setUsers] = useState<UserItem[]>([])
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Employee | null>(null)
