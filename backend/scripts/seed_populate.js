@@ -1,6 +1,6 @@
 /**
- * Скрипт наполнения БД: 3 курса, у каждого 1 начальник курса + 1 командир взвода + 30 курсантов.
- * Удаляет ранее созданные скриптом данные (кроме тестового подразделения).
+ * Скрипт наполнения БД: 5 курсов, у каждого 1 начальник курса + 1 командир взвода + 30 курсантов.
+ * Удаляет ранее созданные скриптом данные.
  * Пароль каждого пользователя = его логин.
  *
  * Запуск:  node scripts/seed_populate.js
@@ -16,17 +16,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgres',
 });
 
-const POS_KURSANT = 1;
-const POS_KOMVZVOD = 3; // Командир взвода
-const POS_NACHKURSA = 4;
-const RANK_RYADOVOY = 1;
-const RANK_SERZHANT = 3;
-const RANK_LEYTENANT_PLUS = [11, 12, 13]; // Лейтенант, ст. лейтенант, капитан
-const RANK_MAYOR_PLUS = [14, 15]; // Майор, Подполковник
-const ROLE_USER = 1;
-const ROLE_COMMANDER = 3;
-
-const COURSES = ['1 курс', '2 курс', '3 курс'];
+const COURSES = ['1 курс', '2 курс', '3 курс', '4 курс', '5 курс'];
 const KURSANTS_PER_COURSE = 30;
 
 const LAST_NAMES = [
@@ -81,10 +71,50 @@ async function run() {
   try {
     await client.query('BEGIN');
 
-    // ── Удаляем всё кроме "Тестовое подразделение" ──────────────────────────
-    const oldUnits = await client.query(
-      `SELECT id FROM units WHERE name != 'Тестовое подразделение'`
-    );
+    const ids = {
+      roleUser: null,
+      roleCommander: null,
+      posKursant: null,
+      posKomVzvod: null,
+      posNachKursa: null,
+      rankRyadovoy: null,
+      rankSerzhant: null,
+      rankCommanderPool: [],
+      rankKomVzvodPool: [],
+    };
+
+    async function getIdByName(table, name) {
+      const res = await client.query(`SELECT id FROM ${table} WHERE name = $1`, [name]);
+      if (!res.rows[0]) throw new Error(`Не найдено в справочнике ${table}: ${name}`);
+      return res.rows[0].id;
+    }
+
+    ids.roleUser = await getIdByName('roles', 'user');
+    ids.roleCommander = await getIdByName('roles', 'commander');
+
+    ids.posKursant = await getIdByName('positions', 'Курсант');
+    ids.posKomVzvod = await getIdByName('positions', 'Командир взвода');
+    ids.posNachKursa = await getIdByName('positions', 'Начальник курса');
+
+    ids.rankRyadovoy = await getIdByName('ranks', 'Рядовой полиции');
+    ids.rankSerzhant = await getIdByName('ranks', 'Сержант полиции');
+
+    // Для начальника курса — старшие звания
+    ids.rankCommanderPool = [
+      await getIdByName('ranks', 'Майор полиции'),
+      await getIdByName('ranks', 'Подполковник полиции'),
+      await getIdByName('ranks', 'Полковник полиции'),
+    ];
+
+    // Для командира взвода — офицерские звания среднего звена
+    ids.rankKomVzvodPool = [
+      await getIdByName('ranks', 'Лейтенант полиции'),
+      await getIdByName('ranks', 'Старший лейтенант полиции'),
+      await getIdByName('ranks', 'Капитан полиции'),
+    ];
+
+    // ── Удаляем старые данные ───────────────────────────────────────────────
+    const oldUnits = await client.query('SELECT id FROM units');
     const oldUnitIds = oldUnits.rows.map(r => r.id);
 
     if (oldUnitIds.length > 0) {
@@ -149,26 +179,26 @@ async function run() {
       const unitId = unitRes.rows[0].id;
 
       // Начальник курса
-      const nk = await createPerson(ROLE_COMMANDER, POS_NACHKURSA, pick(RANK_MAYOR_PLUS), unitId);
+      const nk = await createPerson(ids.roleCommander, ids.posNachKursa, pick(ids.rankCommanderPool), unitId);
       console.log(`${courseName}: Начальник курса — ${nk.fio} (логин: ${nk.login})`);
       total++;
 
       // Командир взвода (тот же unit_id — подразделение «курс»)
-      const kv = await createPerson(ROLE_COMMANDER, POS_KOMVZVOD, pick(RANK_LEYTENANT_PLUS), unitId);
+      const kv = await createPerson(ids.roleCommander, ids.posKomVzvod, pick(ids.rankKomVzvodPool), unitId);
       console.log(`${courseName}: Командир взвода — ${kv.fio} (логин: ${kv.login})`);
       total++;
 
       // 30 курсантов
       for (let i = 0; i < KURSANTS_PER_COURSE; i++) {
-        const rank = Math.random() < 0.95 ? RANK_RYADOVOY : RANK_SERZHANT;
-        await createPerson(ROLE_USER, POS_KURSANT, rank, unitId);
+        const rank = Math.random() < 0.95 ? ids.rankRyadovoy : ids.rankSerzhant;
+        await createPerson(ids.roleUser, ids.posKursant, rank, unitId);
         total++;
       }
       console.log(`${courseName}: ${KURSANTS_PER_COURSE} курсантов добавлено`);
     }
 
     await client.query('COMMIT');
-    console.log(`\nГотово! Создано ${total} записей (3 начальника + 3 командира взвода + 90 курсантов).`);
+    console.log(`\nГотово! Создано ${total} записей (5 начальников + 5 командиров взвода + 150 курсантов).`);
     console.log('Пароль каждого = его логин.');
   } catch (err) {
     await client.query('ROLLBACK');
