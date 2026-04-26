@@ -1,5 +1,6 @@
 package com.example.personnelaccounting.net
 
+import com.example.personnelaccounting.BuildConfig
 import com.example.personnelaccounting.data.TokenStorage
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -9,9 +10,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 object ApiClient {
-    // Эмулятор Android: 10.0.2.2 (localhost хоста)
-    // Реальный телефон: IP компьютера в локальной сети, например http://192.168.1.XXX:3000/
-    const val BASE_URL = "http://10.0.2.2:3000/"
+    /** Задаётся при сборке: `API_BASE_URL` в `android/local.properties` (см. README). */
+    val BASE_URL: String = BuildConfig.API_BASE_URL
 
     private fun createHttpClient(tokenStorage: TokenStorage): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
