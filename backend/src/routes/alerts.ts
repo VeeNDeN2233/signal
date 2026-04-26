@@ -90,11 +90,11 @@ router.post('/', requireRole('commander'), async (req: Request, res: Response): 
     );
     const alert = alertResult.rows[0];
 
-    // Получаем FCM-токены всех сотрудников подразделения
-    const tokensResult = await client.query(
-      `SELECT id, fcm_token FROM employees
-       WHERE unit_id = $1 AND fcm_token IS NOT NULL AND fcm_token <> ''`,
-      [unit_id]
+    // FCM: всем с токеном, кроме случая «есть расход на дату тревоги» и в последнем
+    // расходе за этот день статус сотрудника не «налицо» (см. fetchEmployeesForAlertPush).
+    const tokensResult = await client.query<{ id: number; fcm_token: string }>(
+      fetchEmployeesForAlertPushSql(),
+      [alert.id, unit_id]
     );
 
     // Отправляем push-уведомления асинхронно, не блокируя ответ
@@ -241,6 +241,44 @@ router.post('/:id/respond', requireRole('user'), async (req: Request, res: Respo
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
+
+/**
+ * SQL: сотрудники подразделения с непустым FCM-токеном, которым нужно отправить тревогу.
+ * Если на календарную дату объявления тревоги (по полю created_at) для взвода есть хотя бы
+ * один расход, берётся расход с максимальным raskhod_time за этот день; push не идёт тем,
+ * у кого в этом расходе статус отличен от «налицо». Если расхода на эту дату нет — всем с токеном.
+ */
+function fetchEmployeesForAlertPushSql(): string {
+  return `
+    WITH alert_day AS (
+      SELECT created_at::date AS d FROM alerts WHERE id = $1
+    ),
+    latest_raskhod AS (
+      SELECT r.id
+      FROM raskhod r
+      INNER JOIN alert_day ad ON r.unit_id = $2 AND r.raskhod_date = ad.d
+      ORDER BY r.raskhod_time DESC
+      LIMIT 1
+    )
+    SELECT e.id, e.fcm_token
+    FROM employees e
+    WHERE e.unit_id = $2
+      AND e.fcm_token IS NOT NULL
+      AND trim(e.fcm_token) <> ''
+      AND (
+        NOT EXISTS (
+          SELECT 1 FROM raskhod r INNER JOIN alert_day ad ON r.unit_id = $2 AND r.raskhod_date = ad.d
+        )
+        OR NOT EXISTS (
+          SELECT 1
+          FROM latest_raskhod lr
+          INNER JOIN raskhod_entries re ON re.raskhod_id = lr.id AND re.employee_id = e.id
+          INNER JOIN user_statuses us ON us.id = re.status_id
+          WHERE us.name IS NOT NULL AND us.name <> 'налицо'
+        )
+      )
+  `;
+}
 
 /**
  * Отправляет FCM push-уведомления каждому устройству из списка.
