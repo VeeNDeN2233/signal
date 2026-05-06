@@ -9,7 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioManager
-import android.media.Ringtone
+import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
@@ -23,7 +23,7 @@ import com.example.personnelaccounting.ui.AlertActivity
 
 class AlarmPlayerService : Service() {
 
-    private var ringtone: Ringtone? = null
+    private var mediaPlayer: MediaPlayer? = null
     private var currentAlertId: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var previousAlarmVolume: Int? = null
@@ -61,14 +61,8 @@ class AlarmPlayerService : Service() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Уведомления тревоги"
-                setSound(
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                enableVibration(true)
+                setSound(null, null)
+                enableVibration(false)
             }
             nm.createNotificationChannel(channel)
         }
@@ -109,25 +103,45 @@ class AlarmPlayerService : Service() {
     }
 
     private fun startAlarmSound() {
-        if (ringtone?.isPlaying == true) return
+        if (mediaPlayer?.isPlaying == true) return
 
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        val rt = RingtoneManager.getRingtone(this, uri)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            rt.audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            rt.isLooping = true
+            ?: return
+
+        val mp = try {
+            MediaPlayer.create(this, uri)
+        } catch (_: Exception) {
+            null
+        } ?: return
+
+        mp.isLooping = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            mp.setAudioStreamType(AudioManager.STREAM_ALARM)
         }
-        ringtone = rt
-        rt.play()
+        mp.setOnErrorListener { _, _, _ ->
+            releaseMediaPlayer()
+            false
+        }
+        mp.start()
+        mediaPlayer = mp
+    }
+
+    private fun releaseMediaPlayer() {
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     private fun stopAlarmSoundAndRestore() {
-        ringtone?.stop()
-        ringtone = null
+        releaseMediaPlayer()
         currentAlertId = null
         stopVibration()
         restoreAlarmVolumeBestEffort()
@@ -204,7 +218,7 @@ class AlarmPlayerService : Service() {
         const val ACTION_STOP = "com.example.personnelaccounting.alarm.STOP"
         const val EXTRA_ALERT_ID = "alert_id"
 
-        private const val CHANNEL_ID = "alert_channel"
+        private const val CHANNEL_ID = "alert_channel_loop"
         private const val NOTIFICATION_ID = 1001
     }
 }

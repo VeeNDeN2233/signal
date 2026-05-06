@@ -223,20 +223,12 @@ async function sendFcmNotifications(alertId: number, employees: Array<{
         try {
             await messaging.send({
                 token: emp.fcm_token,
-                notification: {
-                    title: 'ТРЕВОГА',
-                    body: 'Объявлена тревога. Немедленно подтвердите получение сигнала.',
-                },
                 data: {
                     alert_id: String(alertId),
                     type: 'alert',
                 },
                 android: {
                     priority: 'high',
-                    notification: {
-                        channelId: 'alert_channel',
-                        sound: 'alarm',
-                    },
                 },
             });
         }
