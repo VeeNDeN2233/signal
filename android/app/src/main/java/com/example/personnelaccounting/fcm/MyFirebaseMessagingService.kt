@@ -2,6 +2,7 @@ package com.example.personnelaccounting.fcm
 
 import android.content.Intent
 import com.example.personnelaccounting.alarm.AlarmPlayerService
+import com.example.personnelaccounting.data.TokenStorage
 import com.example.personnelaccounting.ui.AlertActivity
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -29,9 +30,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // Token registration is done after login in this app.
-        // We keep this hook for later: could enqueue update if already authenticated.
         super.onNewToken(token)
+        FcmTokenSync.registerBestEffort(TokenStorage(applicationContext), token)
     }
 }
 

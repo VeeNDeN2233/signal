@@ -7,6 +7,14 @@ import retrofit2.http.PUT
 
 data class FcmTokenRequest(val fcm_token: String)
 
+data class FcmTokenUpdateData(
+    val id: Int,
+    val user_id: Int,
+    val fcm_token: String
+)
+
+data class FcmTokenUpdateResponse(val data: FcmTokenUpdateData)
+
 data class EmployeeMeData(
     val id: Int,
     val last_name: String,
@@ -24,5 +32,5 @@ interface EmployeesApi {
     fun getMe(): Call<EmployeeMeResponse>
 
     @PUT("/api/employees/me/fcm-token")
-    fun updateFcmToken(@Body body: FcmTokenRequest): Call<Any>
+    fun updateFcmToken(@Body body: FcmTokenRequest): Call<FcmTokenUpdateResponse>
 }

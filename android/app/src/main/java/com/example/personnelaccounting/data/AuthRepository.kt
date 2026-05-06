@@ -1,7 +1,7 @@
 package com.example.personnelaccounting.data
 
+import com.example.personnelaccounting.fcm.FcmTokenSync
 import com.example.personnelaccounting.net.ApiClient
-import com.example.personnelaccounting.net.FcmTokenRequest
 import com.example.personnelaccounting.net.LoginRequest
 import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
@@ -12,7 +12,6 @@ class AuthRepository(
     private val tokenStorage: TokenStorage
 ) {
     private val authApi = ApiClient.createAuthApi(tokenStorage)
-    private val employeesApi = ApiClient.createEmployeesApi(tokenStorage)
 
     fun login(
         login: String,
@@ -48,15 +47,9 @@ class AuthRepository(
 
     private fun registerFcmTokenBestEffort() {
         FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token ->
-                if (token.isNullOrBlank()) return@addOnSuccessListener
-                employeesApi.updateFcmToken(FcmTokenRequest(fcm_token = token)).enqueue(object : Callback<Any> {
-                    override fun onResponse(call: Call<Any>, response: Response<Any>) = Unit
-                    override fun onFailure(call: Call<Any>, t: Throwable) = Unit
-                })
-            }
+            .addOnSuccessListener { token -> FcmTokenSync.registerBestEffort(tokenStorage, token) }
             .addOnFailureListener {
-                // ignore; we'll retry on next login
+                // повтор при следующем входе или onNewToken
             }
     }
 }
