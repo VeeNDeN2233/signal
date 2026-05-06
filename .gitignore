@@ -1,5 +1,9 @@
 .env
 .env.local
+
+# Ключи Firebase / Google (никогда не коммитить)
+*firebase-adminsdk*.json
+
 *.log
 .DS_Store
 node_modules/
