@@ -1,5 +1,5 @@
-# PostgreSQL → одноразовый migrate → API → веб (nginx + SPA, /api проксируется на API)
-# Перед первым запуском: node scripts/bootstrap-env.js (или скопируйте env.example → .env и задайте JWT_*).
+
+
 
 services:
   postgres:
@@ -54,7 +54,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?missing_JWT_REFRESH_SECRET_see_README}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      # FCM: JSON с хоста монтируется в контейнер (см. FIREBASE_CREDENTIALS_HOST_PATH в .env)
+
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-adminsdk.json
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}

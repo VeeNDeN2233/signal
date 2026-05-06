@@ -48,21 +48,15 @@ const auditLog_1 = __importDefault(require("./routes/admin/auditLog"));
 const raskhod_1 = __importDefault(require("./routes/raskhod"));
 const alerts_1 = __importDefault(require("./routes/alerts"));
 const employees_me_1 = __importDefault(require("./routes/employees-me"));
-// Загружаем переменные окружения
 dotenv.config();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '3000', 10);
-// Middleware для парсинга JSON
 app.use(express_1.default.json());
-// Базовый маршрут для проверки работоспособности
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Сервер работает' });
 });
-// Маршруты аутентификации
 app.use('/api/auth', auth_1.default);
-// Маршруты сотрудников (для user и commander) — должны быть до admin /api/employees
 app.use('/api/employees', auth_2.authenticate, employees_me_1.default);
-// Административные маршруты (только admin)
 app.use('/api/users', auth_2.authenticate, (0, auth_2.requireRole)('admin'), users_1.default);
 app.use('/api/employees', auth_2.authenticate, (0, auth_2.requireRole)('admin'), employees_1.default);
 app.use('/api/positions', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.positions);
@@ -71,14 +65,10 @@ app.use('/api/units', auth_2.authenticate, (0, auth_2.requireRole)('admin'), ref
 app.use('/api/user-statuses', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.userStatuses);
 app.use('/api/roles', auth_2.authenticate, (0, auth_2.requireRole)('admin'), referencesRouter.roles);
 app.use('/api/audit-log', auth_2.authenticate, (0, auth_2.requireRole)('admin'), auditLog_1.default);
-// Маршруты расхода личного состава (только commander)
 app.use('/api/raskhod', auth_2.authenticate, (0, auth_2.requireRole)('commander'), raskhod_1.default);
-// Маршруты тревоги (роли проверяются на уровне каждого маршрута)
 app.use('/api/alerts', auth_2.authenticate, alerts_1.default);
-// Запуск сервера
 async function start() {
     try {
-        // Проверяем подключение к БД перед запуском
         await (0, db_1.checkConnection)();
         app.listen(PORT, () => {
             console.log(`Сервер запущен на порту ${PORT}`);

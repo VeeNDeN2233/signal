@@ -266,5 +266,3 @@ npm run test:e2e
 3. `docker compose up --build`
 4. Браузер: `http://localhost:8080` → `admin` / `admin`
 5. По желанию: `docker compose exec api node scripts/seed_populate.js` и вход под логином руководителя из вывода скрипта
-
-Условия использования см. [LICENSE](LICENSE).

@@ -12,7 +12,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Шапка -->
+        
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -29,7 +29,7 @@
                 android:textStyle="bold"
                 android:textColor="#0F172A" />
 
-            <!-- Индикатор подключения -->
+            
             <View
                 android:id="@+id/statusDot"
                 android:layout_width="10dp"
@@ -47,7 +47,7 @@
 
         </LinearLayout>
 
-        <!-- Карточка сотрудника -->
+        
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -61,7 +61,7 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- Аватар + ФИО -->
+                
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -69,7 +69,7 @@
                     android:gravity="center_vertical"
                     android:layout_marginBottom="16dp">
 
-                    <!-- Аватар с инициалами -->
+                    
                     <FrameLayout
                         android:layout_width="56dp"
                         android:layout_height="56dp"
@@ -120,14 +120,14 @@
 
                 </LinearLayout>
 
-                <!-- Разделитель -->
+                
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="#E2E8F0"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Подразделение -->
+                
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -154,7 +154,7 @@
 
                 </LinearLayout>
 
-                <!-- Роль -->
+                
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -185,7 +185,7 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Карточка действий -->
+        
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -224,7 +224,7 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Skeleton / загрузка -->
+        
         <ProgressBar
             android:id="@+id/loadingIndicator"
             android:layout_width="wrap_content"

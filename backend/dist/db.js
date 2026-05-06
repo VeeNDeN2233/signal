@@ -40,9 +40,7 @@ const pg_1 = require("pg");
 const dotenv = __importStar(require("dotenv"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-// Загружаем переменные окружения из .env файла
 dotenv.config();
-// Пул соединений с PostgreSQL
 exports.pool = new pg_1.Pool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
@@ -50,7 +48,6 @@ exports.pool = new pg_1.Pool({
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
 });
-// Проверка подключения к БД
 async function checkConnection() {
     const client = await exports.pool.connect();
     try {
@@ -61,7 +58,6 @@ async function checkConnection() {
         client.release();
     }
 }
-// Выполнение SQL-миграций из директории migrations/
 async function runMigrations() {
     const migrationsDir = path.join(__dirname, '..', 'migrations');
     const files = fs.readdirSync(migrationsDir).sort();

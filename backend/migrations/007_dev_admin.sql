@@ -1,6 +1,6 @@
--- Миграция 007: учётная запись администратора для разработки / первого входа после развёртывания
--- Логин: admin  Пароль: admin  (только для dev/demo — в продакшене смените пароль или удалите пользователя)
--- Хеш bcrypt (cost 10) для строки "admin", совместим с backend (bcrypt.compare).
+
+
+
 
 INSERT INTO users (login, password_hash, role_id, unit_id)
 SELECT

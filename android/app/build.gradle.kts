@@ -18,8 +18,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // URL API: по умолчанию эмулятор (10.0.2.2). Для телефона в LAN — в android/local.properties, например:
-        // API_BASE_URL=http://192.168.1.186:3000/
+        
+        
         val props = Properties()
         val localFile = rootProject.file("local.properties")
         if (localFile.exists()) {
@@ -74,7 +74,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Firebase
+    
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
     implementation("com.google.firebase:firebase-messaging")
 

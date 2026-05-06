@@ -1,4 +1,3 @@
-# Сборка и продакшен-образ API (Node + скомпилированный TS + миграции)
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

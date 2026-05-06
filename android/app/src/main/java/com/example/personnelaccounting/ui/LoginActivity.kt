@@ -31,7 +31,7 @@ class LoginActivity : AppCompatActivity() {
         tokenStorage = TokenStorage(this)
         authRepository = AuthRepository(tokenStorage)
 
-        // If already logged in, go home
+        
         if (tokenStorage.getAccessToken() != null && tokenStorage.getRefreshToken() != null) {
             goHome()
             return

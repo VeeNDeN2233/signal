@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Android 13+ notifications -->
+    
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application

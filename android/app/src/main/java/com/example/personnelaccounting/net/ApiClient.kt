@@ -10,7 +10,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 object ApiClient {
-    /** Задаётся при сборке: `API_BASE_URL` в `android/local.properties` (см. README). */
+    
     val BASE_URL: String = BuildConfig.API_BASE_URL
 
     private fun createHttpClient(tokenStorage: TokenStorage): OkHttpClient {

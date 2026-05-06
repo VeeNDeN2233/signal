@@ -10,28 +10,15 @@ import auditLogRouter from './routes/admin/auditLog';
 import raskhodRouter from './routes/raskhod';
 import alertsRouter from './routes/alerts';
 import employeesMeRouter from './routes/employees-me';
-
-// Загружаем переменные окружения
 dotenv.config();
-
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
-
-// Middleware для парсинга JSON
 app.use(express.json());
-
-// Базовый маршрут для проверки работоспособности
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', message: 'Сервер работает' });
+    res.json({ status: 'ok', message: 'Сервер работает' });
 });
-
-// Маршруты аутентификации
 app.use('/api/auth', authRouter);
-
-// Маршруты сотрудников (для user и commander) — должны быть до admin /api/employees
 app.use('/api/employees', authenticate, employeesMeRouter);
-
-// Административные маршруты (только admin)
 app.use('/api/users', authenticate, requireRole('admin'), usersRouter);
 app.use('/api/employees', authenticate, requireRole('admin'), employeesRouter);
 app.use('/api/positions', authenticate, requireRole('admin'), referencesRouter.positions);
@@ -40,28 +27,19 @@ app.use('/api/units', authenticate, requireRole('admin'), referencesRouter.units
 app.use('/api/user-statuses', authenticate, requireRole('admin'), referencesRouter.userStatuses);
 app.use('/api/roles', authenticate, requireRole('admin'), referencesRouter.roles);
 app.use('/api/audit-log', authenticate, requireRole('admin'), auditLogRouter);
-
-// Маршруты расхода личного состава (только commander)
 app.use('/api/raskhod', authenticate, requireRole('commander'), raskhodRouter);
-
-// Маршруты тревоги (роли проверяются на уровне каждого маршрута)
 app.use('/api/alerts', authenticate, alertsRouter);
-
-// Запуск сервера
 async function start(): Promise<void> {
-  try {
-    // Проверяем подключение к БД перед запуском
-    await checkConnection();
-
-    app.listen(PORT, () => {
-      console.log(`Сервер запущен на порту ${PORT}`);
-    });
-  } catch (error) {
-    console.error('Ошибка при запуске сервера:', error);
-    process.exit(1);
-  }
+    try {
+        await checkConnection();
+        app.listen(PORT, () => {
+            console.log(`Сервер запущен на порту ${PORT}`);
+        });
+    }
+    catch (error) {
+        console.error('Ошибка при запуске сервера:', error);
+        process.exit(1);
+    }
 }
-
 start();
-
 export default app;

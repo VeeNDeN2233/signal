@@ -9,9 +9,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-/**
- * Отправка FCM-токена на бэкенд после логина или при смене токена Firebase.
- */
+
 object FcmTokenSync {
     private const val TAG = "FcmTokenSync"
 

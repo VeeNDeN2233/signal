@@ -34,7 +34,7 @@ class AlertActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Make sure screen stays on while alert is active
+        
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContentView(R.layout.activity_alert)
@@ -82,7 +82,7 @@ class AlertActivity : AppCompatActivity() {
                 showStatus("Отправлено")
                 finish()
             } else {
-                // Offline or server error -> queue
+                
                 withContext(Dispatchers.IO) { queue.enqueue(id) }
                 AlertSyncScheduler.schedule(this@AlertActivity)
                 stopAlarm()

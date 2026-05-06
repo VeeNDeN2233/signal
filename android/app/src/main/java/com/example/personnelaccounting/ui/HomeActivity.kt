@@ -47,7 +47,7 @@ class HomeActivity : AppCompatActivity() {
         roleBadge       = findViewById(R.id.roleBadge)
         loadingIndicator = findViewById(R.id.loadingIndicator)
 
-        // Android 13+ — разрешение на уведомления
+        
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             val granted = ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.POST_NOTIFICATIONS
@@ -78,7 +78,7 @@ class HomeActivity : AppCompatActivity() {
                 if (!response.isSuccessful) {
                     Log.e("HomeActivity", "Ошибка HTTP ${response.code()}: ${response.errorBody()?.string()}")
                     if (response.code() == 401) {
-                        // Токены недействительны — возвращаемся на экран входа
+                        
                         tokenStorage.clear()
                         startActivity(Intent(this@HomeActivity, LoginActivity::class.java))
                         finish()

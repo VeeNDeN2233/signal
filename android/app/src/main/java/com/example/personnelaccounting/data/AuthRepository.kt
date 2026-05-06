@@ -49,7 +49,7 @@ class AuthRepository(
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token -> FcmTokenSync.registerBestEffort(tokenStorage, token) }
             .addOnFailureListener {
-                // повтор при следующем входе или onNewToken
+                
             }
     }
 }

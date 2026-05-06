@@ -14,14 +14,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val type = message.data["type"]
         if (type != null && type != "alert") return
 
-        // Start loud alarm sound
+        
         val alarmIntent = Intent(this, AlarmPlayerService::class.java).apply {
             action = AlarmPlayerService.ACTION_START
             putExtra(AlarmPlayerService.EXTRA_ALERT_ID, alertId)
         }
         startForegroundService(alarmIntent)
 
-        // Bring full-screen activity (works best with high-importance notification from the service)
+        
         val activityIntent = Intent(this, AlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(AlertActivity.EXTRA_ALERT_ID, alertId)

@@ -28,7 +28,6 @@ body,
   margin: 0;
 }
 
-/* Не даём центрированной вёрстке уезжать влево/вправо при появлении вертикального скролла */
 html {
   scrollbar-gutter: stable;
 }
@@ -60,7 +59,6 @@ button:focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Узкий экран: бренд + выход в одну строку, вкладки сеткой 2×2 на всю ширину */
 @media (max-width: 820px) {
   .commander-header-inner {
     display: grid !important;
