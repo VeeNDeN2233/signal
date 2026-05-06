@@ -8,8 +8,9 @@ const router = Router();
 
 /**
  * Инициализация Firebase Admin SDK (один раз при первом использовании).
- * Ожидает переменную окружения GOOGLE_APPLICATION_CREDENTIALS (путь к service account JSON)
- * или FIREBASE_SERVICE_ACCOUNT_JSON (содержимое JSON в виде строки).
+ * Ожидает FIREBASE_SERVICE_ACCOUNT_JSON (JSON service account одной строкой)
+ * или GOOGLE_APPLICATION_CREDENTIALS (путь к JSON внутри контейнера) + при необходимости
+ * FIREBASE_PROJECT_ID / GOOGLE_CLOUD_PROJECT (для FCM в средах без автоопределения project id).
  */
 function getFirebaseApp(): admin.app.App {
   if (admin.apps.length > 0) {
@@ -17,16 +18,29 @@ function getFirebaseApp(): admin.app.App {
   }
 
   let credential: admin.credential.Credential;
+  let projectId: string | undefined;
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    credential = admin.credential.cert(serviceAccount);
+    const raw = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) as {
+      project_id?: string;
+      projectId?: string;
+    };
+    credential = admin.credential.cert(raw as admin.ServiceAccount);
+    projectId = raw.project_id ?? raw.projectId;
   } else {
-    // Использует GOOGLE_APPLICATION_CREDENTIALS или Application Default Credentials
     credential = admin.credential.applicationDefault();
+    projectId =
+      process.env.FIREBASE_PROJECT_ID ||
+      process.env.GOOGLE_CLOUD_PROJECT ||
+      process.env.GCLOUD_PROJECT;
   }
 
-  return admin.initializeApp({ credential });
+  const options: admin.AppOptions = { credential };
+  if (projectId) {
+    options.projectId = projectId;
+  }
+
+  return admin.initializeApp(options);
 }
 
 // GET /api/alerts — история тревог подразделения (только commander)
