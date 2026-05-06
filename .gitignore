@@ -1,9 +1,15 @@
 .env
 .env.local
 
+<<<<<<< HEAD
 # Firebase Admin SDK (ключи не коммитить)
 *firebase-adminsdk*.json
 firebase-adminsdk.json
+=======
+# Ключи Firebase / Google (никогда не коммитить)
+*firebase-adminsdk*.json
+
+>>>>>>> 6c09721662d04a4d89b754078298c9906c63f696
 *.log
 .DS_Store
 node_modules/
